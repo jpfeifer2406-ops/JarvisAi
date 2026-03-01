@@ -23,6 +23,8 @@ A fully local, agentic AI voice assistant with wake word detection, screen visio
 - **One-click install** — `install.bat` sets up everything, `start.bat` launches
 
 ---
+Coffe helps: https://buymeacoffee.com/azzren
+---
 
 ## Quick Start
 
