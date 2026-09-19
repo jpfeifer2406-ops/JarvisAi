@@ -77,8 +77,8 @@ def _is_stop_command(text: str) -> bool:
 def _is_session_end_command(text: str) -> bool:
     """Return True when the Captain explicitly ends the active voice session."""
     cleaned = re.sub(r"[^a-zäöüß0-9 ]+", " ", text.lower())
-    cleaned = re.sub(r"\\s+", " ", cleaned).strip()
-    return bool(re.search(r"\\b(?:computer\\s+)?(?:ruhemodus|standby)\\b", cleaned))
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return bool(re.search(r"\b(?:computer\s+)?(?:ruhemodus|standby)\b", cleaned))
 
 
 def _direct_system_response(text: str) -> str | None:
