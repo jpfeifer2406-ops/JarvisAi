@@ -28,6 +28,23 @@ should be reviewed as part of the full license inventory.
 NASA media guidance:
 https://www.nasa.gov/nasa-brand-center/images-and-media/
 
+
+## Kikiri German — Victoria
+
+COMPUTER v0.5.2 TEST can load the German Victoria TTS checkpoint and voicepack
+from Hugging Face on first voice use.
+
+- Project/model: kikiri-tts/kikiri-german-victoria
+- Architecture: Kokoro-compatible / StyleTTS2 Stage 2
+- Language: German
+- License: Apache-2.0
+- Use in COMPUTER: experimental default German TTS voice
+- Runtime assets: kikiri_german_victoria_ep10.pth and voices/victoria.pt
+
+The model is downloaded at runtime and is not vendored into this repository.
+Preserve the Apache-2.0 license notice in any redistributed bundle and perform a
+full model/dependency review before commercial release.
+
 ## Production rule
 
 Do not add code or assets from third-party projects to COMPUTER unless the
