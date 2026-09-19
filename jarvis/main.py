@@ -67,13 +67,27 @@ def _is_stop_command(text: str) -> bool:
 
 def _is_session_end_command(text: str) -> bool:
     """Return True when the Captain explicitly ends the active voice session."""
-    cleaned = text.strip().lower().rstrip(".,!?")
-    return cleaned in {
-        "ruhemodus",
-        "computer ruhemodus",
-        "standby",
-        "computer standby",
-    }
+    cleaned = re.sub(r"[^a-zäöüß0-9 ]+", " ", text.lower())
+    cleaned = re.sub(r"\\s+", " ", cleaned).strip()
+    return bool(re.search(r"\\b(?:computer\\s+)?(?:ruhemodus|standby)\\b", cleaned))
+
+
+def _direct_system_response(text: str) -> str | None:
+    """Handle deterministic local system questions without asking the LLM."""
+    cleaned = re.sub(r"[^a-zäöüß0-9 ]+", " ", text.lower())
+    cleaned = re.sub(r"\\s+", " ", cleaned).strip()
+    time_phrases = (
+        "wie spät ist es",
+        "wie spaet ist es",
+        "uhrzeit",
+        "welche uhrzeit",
+        "wie viel uhr",
+        "wieviel uhr",
+    )
+    if any(phrase in cleaned for phrase in time_phrases):
+        now = datetime.now()
+        return f"Es ist {now:%H:%M} Uhr, Captain."
+    return None
 
 
 def _check_abort() -> None:
@@ -389,7 +403,13 @@ def _handle_wake_inner() -> None:
                 print("[COMPUTER] Stopped. (voice)")
                 raise _Aborted()
 
-            response_text = _process_request(user_text)
+            direct_response = _direct_system_response(user_text)
+            if direct_response is not None:
+                response_text = direct_response
+                _broadcast({"type": "user", "text": user_text})
+                _broadcast({"type": "response", "text": response_text})
+            else:
+                response_text = _process_request(user_text)
             _check_abort()
 
             print(f"[COMPUTER] {response_text}")
