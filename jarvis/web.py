@@ -1,4 +1,4 @@
-"""Jarvis Web UI — runs alongside voice as a background thread."""
+"""COMPUTER cockpit — JarvisAi runtime layer with COMPUTER identity."""
 from __future__ import annotations
 import asyncio
 import json
@@ -13,7 +13,7 @@ from jarvis.tts import speak_streamed, stop_speaking, is_speaking
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
-app = FastAPI(title="Jarvis")
+app = FastAPI(title="COMPUTER")
 _clients: list[WebSocket] = []
 _loop: asyncio.AbstractEventLoop | None = None
 
@@ -70,7 +70,6 @@ async def api_providers():
             "model": prov.get("model", ""),
             "type": prov.get("type", "ollama"),
             "base_url": prov.get("base_url", ""),
-            "api_key": prov.get("api_key", ""),
         }
     return JSONResponse({"providers": result, "active": active})
 
@@ -91,14 +90,18 @@ async def api_upsert_provider(provider_key: str, request: Request):
     body = await request.json()
     cfg = _load_config()
     providers = cfg.setdefault("llm", {}).setdefault("providers", {})
-    providers[provider_key] = {
-        "type": body.get("type", "openai"),
-        "label": body.get("label", provider_key),
-        "model": body.get("model", ""),
-        "base_url": body.get("base_url", ""),
+    existing = providers.get(provider_key, {})
+    updated = {
+        "type": body.get("type", existing.get("type", "openai")),
+        "label": body.get("label", existing.get("label", provider_key)),
+        "model": body.get("model", existing.get("model", "")),
+        "base_url": body.get("base_url", existing.get("base_url", "")),
     }
+    if existing.get("api_key"):
+        updated["api_key"] = existing["api_key"]
     if body.get("api_key"):
-        providers[provider_key]["api_key"] = body["api_key"]
+        updated["api_key"] = body["api_key"]
+    providers[provider_key] = updated
     _save_config(cfg)
     return JSONResponse({"status": "ok", "provider": provider_key})
 
@@ -184,7 +187,7 @@ async def api_toggle_mute():
 async def websocket_endpoint(ws: WebSocket):
     await ws.accept()
     _clients.append(ws)
-    await ws.send_text(json.dumps({"type": "connected", "message": "Jarvis online."}))
+    await ws.send_text(json.dumps({"type": "connected", "message": "COMPUTER online."}))
     try:
         while True:
             data = await ws.receive_text()
@@ -198,7 +201,7 @@ async def websocket_endpoint(ws: WebSocket):
                 if _is_stop_command(user_text):
                     from jarvis.main import abort_all
                     abort_all()
-                    await ws.send_text(json.dumps({"type": "response", "text": "Stopped."}))
+                    await ws.send_text(json.dumps({"type": "response", "text": "Ruhemodus."}))
                     continue
 
                 from jarvis.main import _process_request, _Aborted
@@ -210,9 +213,9 @@ async def websocket_endpoint(ws: WebSocket):
                     from jarvis.main import _speak_streamed_if_unmuted
                     threading.Thread(target=_speak_streamed_if_unmuted, args=(response,), daemon=True).start()
                 except _Aborted:
-                    await ws.send_text(json.dumps({"type": "response", "text": "Stopped."}))
+                    await ws.send_text(json.dumps({"type": "response", "text": "Ruhemodus."}))
                 except Exception as e:
-                    await ws.send_text(json.dumps({"type": "response", "text": f"Error: {e}"}))
+                    await ws.send_text(json.dumps({"type": "response", "text": f"Fehler: {e}"}))
 
             elif msg.get("type") == "interrupt":
                 from jarvis.main import abort_all
