@@ -713,13 +713,14 @@
       </div>
       <div>
         <div class="logo">COMPUTER</div>
-        <div class="logo-version">PERSONAL COMMAND SYSTEM // v0.5.1 EXP</div>
+        <div class="logo-version">PERSONAL COMMAND SYSTEM // v0.5.1 TEST</div>
       </div>
     </div>
     <div class="status-badge">
       <div class="status-dot" id="statusDot"></div>
       <span id="statusText">INITIALIZING</span>
     </div>
+    <div class="status-badge" title="Temporäres Wake Word des unveränderten JarvisAi openWakeWord-Modells">TEST-WAKE: HEY JARVIS</div>
   </div>
   <div class="header-right">
     <select class="model-select" id="modelSelect" title="Active AI provider">
@@ -1013,8 +1014,11 @@ function connect() {
         if (msg.message === 'Thinking...') { setThinking(true); showActivity('ANALYZING'); setReactorState('thinking'); setStatusText('PROCESSING'); }
         else if (msg.message === 'Listening...') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('LISTENING'); }
         else if (msg.message === 'Speaking...') { setThinking(false); hideActivity(); setReactorState('speaking'); setStatusText('SPEAKING'); }
-        else if (msg.message === 'Wake.') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('LISTENING'); addMsg('system', 'LISTENING'); }
-        else if (msg.message === 'Stopped.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('READY'); addMsg('system', 'STOPPED'); }
+        else if (msg.message === 'Transcribing...') { setThinking(true); showActivity('TRANSCRIBING'); setReactorState('thinking'); setStatusText('TRANSCRIBING'); }
+        else if (msg.message === 'Session active.') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('SESSION ACTIVE'); }
+        else if (msg.message === 'Standby.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('STANDBY'); }
+        else if (msg.message === 'Wake.') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('ACTIVATED'); addMsg('system', 'COMPUTER ACTIVATED'); }
+        else if (msg.message === 'Stopped.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('STANDBY'); addMsg('system', 'STOPPED'); }
         else if (msg.message === 'Ready.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('READY'); }
         else { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('READY'); }
         break;
