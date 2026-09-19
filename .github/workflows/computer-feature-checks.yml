@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature-news-globe
+      - feature-v0.5.2-voice-first
   pull_request:
     branches:
       - computer-test
@@ -21,7 +22,7 @@ jobs:
       - name: Install lightweight test dependencies
         run: python -m pip install pytest ddgs
       - name: Compile changed Python modules
-        run: python -m py_compile jarvis/news.py jarvis/main.py jarvis/web.py
+        run: python -m py_compile jarvis/news.py jarvis/main.py jarvis/web.py jarvis/tts.py jarvis/ui_commands.py
       - name: Check inline cockpit JavaScript syntax
         shell: pwsh
         run: |
@@ -32,5 +33,5 @@ jobs:
           pathlib.Path("inline-cockpit.js").write_text("\n".join(blocks), encoding="utf-8")
           '@ | python -
           node --check inline-cockpit.js
-      - name: Run news-mode tests
-        run: python -m pytest -q tests/test_news.py
+      - name: Run feature tests
+        run: python -m pytest -q tests/test_news.py tests/test_ui_commands.py
