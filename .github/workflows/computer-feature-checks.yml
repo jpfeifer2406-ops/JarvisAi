@@ -20,10 +20,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install lightweight test dependencies
-        run: python -m pip install pytest ddgs
+      - name: Install feature test dependencies
+        run: python -m pip install pytest ddgs pyyaml numpy sounddevice python-docx reportlab pypdf
       - name: Compile changed Python modules
-        run: python -m py_compile jarvis/news.py jarvis/main.py jarvis/web.py jarvis/tts.py jarvis/ui_commands.py jarvis/wake.py jarvis/integrations.py jarvis/workshop.py jarvis/tools/router.py
+        run: python -m py_compile jarvis/config_runtime.py jarvis/news.py jarvis/main.py jarvis/web.py jarvis/tts.py jarvis/ui_commands.py jarvis/wake.py jarvis/integrations.py jarvis/workshop.py jarvis/tools/router.py
       - name: Check inline cockpit JavaScript syntax
         shell: pwsh
         run: |
@@ -35,4 +35,4 @@ jobs:
           '@ | python -
           node --check inline-cockpit.js
       - name: Run feature tests
-        run: python -m pytest -q tests/test_news.py tests/test_ui_commands.py tests/test_workshop.py
+        run: python -m pytest -q tests/test_news.py tests/test_ui_commands.py tests/test_workshop.py tests/test_tts.py tests/test_runtime_config.py
