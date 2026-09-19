@@ -5,8 +5,7 @@ import numpy as np
 _CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 def _load_config():
-    with open(_CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    return _runtime_load_config()
 
 _model = None
 _model_device = None  # track what device the model is on
