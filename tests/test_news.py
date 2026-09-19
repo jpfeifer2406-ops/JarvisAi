@@ -33,7 +33,7 @@ def test_spoken_briefing_is_intentionally_short():
     }
     text = build_spoken_briefing(payload)
     assert "A" in text and "B" in text and "C" in text
-    assert "D" not in text
+    assert "Viertens: D" not in text
     assert text.endswith("Details auf Befehl.")
 
 
