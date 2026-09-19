@@ -1,8 +1,8 @@
 @echo off
-title Jarvis Installer
+title COMPUTER v0.5.1 TEST Installer
 echo.
 echo  ============================================
-echo   J.A.R.V.I.S. - AI Voice Assistant Installer
+echo   COMPUTER v0.5.1 TEST - JarvisAi Fork Installer
 echo  ============================================
 echo.
 
@@ -11,7 +11,10 @@ where python >nul 2>nul
 if %errorlevel% neq 0 (
     echo [!] Python not found in PATH.
     echo     Checking common install locations...
-    if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" (
+    if exist "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" (
+        set "PYTHON=%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
+        echo     Found Python 3.14
+    ) else if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" (
         set "PYTHON=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
         echo     Found Python 3.12
     ) else if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
@@ -58,10 +61,10 @@ echo  ============================================
 echo   Installation complete!
 echo  ============================================
 echo.
-echo  To start Jarvis, run:  start.bat
-echo  Or:  .venv\Scripts\activate ^& python -m jarvis.main
+echo  To start COMPUTER, run: start.bat
+echo  Internal module remains jarvis.main for upstream compatibility.
 echo.
 echo  Web UI will open at: http://localhost:7860
-echo  Configure providers in Settings tab.
+echo  Configure providers in the System tab.
 echo.
 pause
