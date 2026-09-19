@@ -1,11 +1,11 @@
 @echo off
 setlocal EnableExtensions
-title COMPUTER v0.5.1 TEST Installer
+title COMPUTER v0.5.2 TEST Installer
 cd /d "%~dp0"
 
 echo.
 echo  ============================================
-echo   COMPUTER v0.5.1 TEST - JarvisAi Fork
+echo   COMPUTER v0.5.2 TEST - JarvisAi Fork
 echo  ============================================
 echo.
 echo  Kokoro currently requires Python 3.11 or 3.12.
@@ -80,5 +80,6 @@ echo.
 echo  Start COMPUTER with: start.bat
 echo  Web cockpit: http://localhost:7860
 echo  Temporary wake word: Hey Jarvis
+echo  Default TTS: German Victoria (downloads on first voice use)
 echo.
 pause

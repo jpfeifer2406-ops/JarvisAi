@@ -368,10 +368,26 @@
 
   /* ─── Side Panel ─── */
   .side-panel {
-    width: 320px; border-left: 1px solid var(--glass-border);
+    width: 0; border-left: 0 solid var(--glass-border);
     background: linear-gradient(180deg, rgba(0,10,30,0.8) 0%, rgba(0,5,15,0.9) 100%);
     display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
     backdrop-filter: blur(20px); z-index: 5;
+    opacity: 0; pointer-events: none; transform: translateX(18px);
+    transition: width .32s cubic-bezier(.16,1,.3,1), opacity .22s ease,
+                transform .32s cubic-bezier(.16,1,.3,1), border-width .32s ease;
+  }
+  body.console-open .side-panel {
+    width: 320px; border-left-width: 1px;
+    opacity: 1; pointer-events: auto; transform: translateX(0);
+  }
+  .console-toggle svg {
+    width: 18px; height: 18px; fill: none; stroke: currentColor;
+    stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round;
+  }
+  .console-toggle.active {
+    color: var(--cyan);
+    border-color: rgba(105,220,255,.55);
+    box-shadow: 0 0 18px rgba(105,220,255,.12);
   }
   .side-header {
     display: flex; align-items: center; justify-content: space-between;
@@ -872,9 +888,125 @@
     .news-sidebar { min-height: 0; }
   }
 
+
+
+  /* ─── v0.5.2 Voice-first cockpit ─── */
+  .chat-panel {
+    transition: background .35s ease, padding .35s ease;
+  }
+  .reactor-hero {
+    position: relative;
+    transition: flex .45s ease, padding .45s ease, min-height .45s ease;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .reactor {
+    transition: width .45s cubic-bezier(.16,1,.3,1), height .45s cubic-bezier(.16,1,.3,1),
+                filter .35s ease;
+  }
+  .reactor::before,
+  .reactor::after {
+    content: '';
+    position: absolute;
+    inset: -18%;
+    border: 1px solid rgba(105,220,255,.14);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: .55;
+  }
+  .reactor::before {
+    animation: voice-orbit 11s linear infinite;
+    border-style: dashed;
+  }
+  .reactor::after {
+    inset: -34%;
+    border-color: rgba(105,220,255,.08);
+    animation: voice-orbit-reverse 18s linear infinite;
+  }
+  .voice-hint {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    letter-spacing: 2.4px;
+    color: var(--text-muted);
+    opacity: .78;
+    transition: opacity .25s ease, transform .25s ease;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  body.chat-closed .chat-panel {
+    justify-content: center;
+    background:
+      radial-gradient(circle at 50% 48%, rgba(0,212,255,.08), transparent 26%),
+      radial-gradient(circle at 50% 48%, rgba(0,120,255,.04), transparent 48%);
+  }
+  body.chat-closed .reactor-hero {
+    flex: 1;
+    min-height: 0;
+    padding: 30px 0 50px;
+    justify-content: center;
+  }
+  body.chat-closed .reactor {
+    width: clamp(210px, 28vw, 310px);
+    height: clamp(210px, 28vw, 310px);
+    animation: voice-float 5.6s ease-in-out infinite;
+    filter: drop-shadow(0 24px 36px rgba(0,0,0,.34));
+  }
+  body.chat-closed .reactor-label {
+    bottom: -18px;
+    font-size: 10px;
+    letter-spacing: 4px;
+  }
+  body.chat-closed .messages,
+  body.chat-closed .input-bar {
+    display: none;
+  }
+  body.chat-closed .activity-bar.active {
+    position: absolute;
+    left: 50%;
+    bottom: 42px;
+    transform: translateX(-50%);
+    width: min(560px, 72%);
+    border: 1px solid rgba(231,169,75,.22);
+    background: rgba(1,10,20,.72);
+    box-shadow: 0 16px 40px rgba(0,0,0,.24);
+    z-index: 4;
+  }
+  body.chat-open .voice-hint {
+    opacity: 0;
+    transform: translateY(-4px);
+    height: 0;
+    overflow: hidden;
+  }
+
+  @keyframes voice-float {
+    0%,100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-13px) scale(1.015); }
+  }
+  @keyframes voice-orbit {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes voice-orbit-reverse {
+    to { transform: rotate(-360deg); }
+  }
+
+  @media (max-width: 900px) {
+    .side-panel {
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      max-width: min(88vw, 360px);
+      box-shadow: -24px 0 60px rgba(0,0,0,.45);
+    }
+    body.console-open .side-panel { width: min(88vw, 360px); }
+  }
+
+  @media (max-width: 760px) {
+    body.chat-closed .reactor { width: 190px; height: 190px; }
+    .voice-hint { font-size: 8px; letter-spacing: 1.5px; white-space: normal; padding: 0 24px; }
+  }
 </style>
 </head>
-<body>
+<body class="chat-closed">
 
 <div class="particles">
   <div class="particle"></div><div class="particle"></div><div class="particle"></div>
@@ -895,7 +1027,7 @@
       </div>
       <div>
         <div class="logo">COMPUTER</div>
-        <div class="logo-version">PERSONAL COMMAND SYSTEM // v0.5.1 TEST</div>
+        <div class="logo-version">PERSONAL COMMAND SYSTEM // v0.5.2 TEST</div>
       </div>
     </div>
     <div class="status-badge">
@@ -912,11 +1044,16 @@
       <span>&#128264;</span>
       <div class="mute-slash"></div>
     </button>
+    <button class="hud-btn console-toggle" id="consoleBtn" title="Systemkonsole öffnen" aria-label="Systemkonsole öffnen" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm9 4.5v-1.4l-2.25-.72a7.7 7.7 0 0 0-.66-1.58l1.08-2.1-.99-.99-2.1 1.08a7.7 7.7 0 0 0-1.58-.66L13.8 4h-1.4l-.72 2.25a7.7 7.7 0 0 0-1.58.66L8 5.83l-.99.99 1.08 2.1a7.7 7.7 0 0 0-.66 1.58L5.2 11.3v1.4l2.23.72c.16.56.38 1.09.66 1.58l-1.08 2.1.99.99 2.1-1.08c.49.28 1.02.5 1.58.66l.72 2.23h1.4l.72-2.23a7.7 7.7 0 0 0 1.58-.66l2.1 1.08.99-.99-1.08-2.1c.28-.49.5-1.02.66-1.58L21 12.7Z"/>
+      </svg>
+    </button>
   </div>
 </div>
 
 <div class="main">
-  <div class="chat-panel">
+  <div class="chat-panel" id="chatPanel">
     <div class="reactor-hero">
       <div class="reactor" id="reactor">
         <svg viewBox="0 0 120 120">
@@ -933,6 +1070,7 @@
         </svg>
         <div class="reactor-label" id="reactorLabel">STANDBY</div>
       </div>
+      <div class="voice-hint" id="voiceHint">VOICE FIRST // „EINGABE ÖFFNEN“ ODER F2</div>
     </div>
 
     <div class="messages" id="messages"></div>
@@ -956,7 +1094,7 @@
     </div>
   </div>
 
-  <div class="side-panel">
+  <div class="side-panel" id="sidePanel">
     <div class="side-header">
       <span class="side-title">SYSTEMKONSOLE</span>
     </div>
@@ -1150,11 +1288,14 @@ const liveFeed = document.getElementById('liveFeed');
 const liveEmpty = document.getElementById('liveEmpty');
 const modelSelect = document.getElementById('modelSelect');
 const muteBtn = document.getElementById('muteBtn');
+const consoleBtn = document.getElementById('consoleBtn');
+const sidePanel = document.getElementById('sidePanel');
 const activityBar = document.getElementById('activityBar');
 const activityText = document.getElementById('activityText');
 const activitySteps = document.getElementById('activitySteps');
 const reactor = document.getElementById('reactor');
 const reactorLabel = document.getElementById('reactorLabel');
+const chatPanel = document.getElementById('chatPanel');
 const newsOverlay = document.getElementById('newsOverlay');
 const newsFeed = document.getElementById('newsFeed');
 const newsTargetName = document.getElementById('newsTargetName');
@@ -1167,6 +1308,18 @@ let toolStepCount = 0;
 let pendingWebText = null;
 let newsGlobe = null;
 let newsResizeObserver = null;
+
+function setConsoleOpen(open) {
+  document.body.classList.toggle('console-open', open);
+  consoleBtn.classList.toggle('active', open);
+  consoleBtn.setAttribute('aria-expanded', String(open));
+  consoleBtn.setAttribute('aria-label', open ? 'Systemkonsole schließen' : 'Systemkonsole öffnen');
+  consoleBtn.title = open ? 'Systemkonsole schließen' : 'Systemkonsole öffnen';
+}
+
+consoleBtn.onclick = () => {
+  setConsoleOpen(!document.body.classList.contains('console-open'));
+};
 
 document.querySelectorAll('.side-tab').forEach(tab => {
   tab.onclick = () => {
@@ -1227,6 +1380,14 @@ function addActivityStep() {
   const n = document.createElement('div'); n.className = 'activity-step active'; activitySteps.appendChild(n);
 }
 
+
+function setChatOpen(open, focusInput = false) {
+  document.body.classList.toggle('chat-open', open);
+  document.body.classList.toggle('chat-closed', !open);
+  if (open && focusInput) {
+    window.setTimeout(() => inputEl.focus(), 80);
+  }
+}
 
 function initNewsGlobe() {
   if (newsGlobe || typeof Globe === 'undefined') return;
@@ -1375,7 +1536,16 @@ async function loadNewsRegion(key) {
 
 newsCloseBtn.addEventListener('click', closeNewsMode);
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && newsOverlay.classList.contains('active')) closeNewsMode();
+  if (e.key === 'F2') {
+    e.preventDefault();
+    setChatOpen(true, true);
+    return;
+  }
+  if (e.key === 'Escape') {
+    if (newsOverlay.classList.contains('active')) closeNewsMode();
+    else if (document.body.classList.contains('console-open')) setConsoleOpen(false);
+    else if (document.body.classList.contains('chat-open')) setChatOpen(false);
+  }
 });
 document.querySelectorAll('.news-region-btn').forEach(btn => {
   btn.addEventListener('click', () => loadNewsRegion(btn.dataset.newsRegion));
@@ -1416,6 +1586,9 @@ function connect() {
       case 'response': setThinking(false); hideActivity(); setReactorState('speaking'); setStatusText('SPEAKING'); addMsg('assistant', msg.text); addLiveFeed('assistant', msg.text); break;
       case 'mute': isMuted = msg.muted; updateMuteUI(); addMsg('system', msg.muted ? 'MUTED' : 'AUDIO ACTIVE'); break;
       case 'provider_changed': loadProviders(); break;
+      case 'ui_mode':
+        if (msg.panel === 'chat') setChatOpen(Boolean(msg.open), Boolean(msg.open));
+        break;
       case 'news_mode': openNewsMode(msg); setStatusText('NEWS // ' + (msg.region?.label || 'WELT')); break;
     }
   };

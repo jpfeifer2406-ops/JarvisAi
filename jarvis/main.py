@@ -28,6 +28,7 @@ from jarvis.context import ContextManager
 from jarvis.memory import Memory
 from jarvis.tools.router import TOOL_SCHEMAS, dispatch
 from jarvis.news import build_news_payload, build_spoken_briefing
+from jarvis.ui_commands import detect_ui_command
 
 _MAX_TOOL_LOOPS = 15
 _CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
@@ -135,6 +136,17 @@ def _news_context_message() -> dict | None:
 def process_request(user_text: str) -> str:
     """Route deterministic COMPUTER modes before falling back to the LLM agent."""
     global _last_news_payload
+
+    ui_open = detect_ui_command(user_text)
+    if ui_open is not None:
+        response = "Eingabe geöffnet, Captain." if ui_open else "Eingabe geschlossen, Captain."
+        _broadcast({"type": "user", "text": user_text})
+        _broadcast({"type": "ui_mode", "panel": "chat", "open": ui_open})
+        _broadcast({"type": "response", "text": response})
+        context.add("user", user_text)
+        context.add("assistant", response)
+        return response
+
     news_payload = build_news_payload(user_text)
     if news_payload is not None:
         _last_news_payload = news_payload
@@ -526,7 +538,7 @@ def _process_request(user_text: str) -> str:
 
 
 def _keyboard_listener() -> None:
-    """Background thread: Esc = abort, F2 = type command, INSERT = mute/unmute."""
+    """Background thread: Esc = abort, F2 = open web input, INSERT = mute/unmute."""
     while True:
         try:
             if msvcrt.kbhit():
@@ -539,10 +551,8 @@ def _keyboard_listener() -> None:
                 elif key in (b'\x00', b'\xe0'):
                     special = msvcrt.getch()
                     if special == b'<':  # F2
-                        print("\n[Type your command] ", end="", flush=True)
-                        cmd = input()
-                        if cmd.strip():
-                            _handle_typed_command(cmd.strip())
+                        _broadcast({"type": "ui_mode", "panel": "chat", "open": True})
+                        print("\n[COMPUTER] Web input opened. Focus the browser to type.")
                     elif special == b'R':  # INSERT
                         toggle_mute()
             time.sleep(0.05)
@@ -569,7 +579,7 @@ def main() -> None:
     from jarvis.web import start_web_background
 
     print("[COMPUTER] Starting up...")
-    print("[COMPUTER] Keys: Esc = stop | F2 = type | INSERT = mute/unmute")
+    print("[COMPUTER] Keys: Esc = stop | F2 = open input | INSERT = mute/unmute")
 
     start_web_background(port=7860)
     print("[COMPUTER] Web UI: http://localhost:7860")

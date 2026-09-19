@@ -21,7 +21,12 @@ context:
   summarize_after: 8
   max_tokens: 2500
 tts:
-  voice: af_heart
+  engine: victoria
+  language: de
+  voice: victoria
+  repo_id: kikiri-tts/kikiri-german-victoria
+  model_file: kikiri_german_victoria_ep10.pth
+  voice_file: voices/victoria.pt
   speed: 1.0
 memory:
   db_path: jarvis/data/memory.db

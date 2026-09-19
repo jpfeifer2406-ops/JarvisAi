@@ -13,6 +13,7 @@ def _load_config():
 
 _pipeline = None
 _voice_tensor = None
+_tts_model = None
 _speaking = threading.Event()  # set while audio is playing
 _interrupt = threading.Event()  # set to stop streaming
 _tts_available = True
@@ -40,35 +41,89 @@ def tts_available() -> bool:
     return _tts_available
 
 def _get_pipeline():
-    global _pipeline
-    if _pipeline is None:
-        from kokoro import KPipeline, KModel
-        repo_id = "hexgrad/Kokoro-82M"
-        if _LOCAL_PTH.exists():
-            kmodel = KModel(repo_id=repo_id, model=str(_LOCAL_PTH)).to("cpu").eval()
-            _pipeline = KPipeline(lang_code="a", repo_id=repo_id, model=kmodel)
-        else:
-            _pipeline = KPipeline(lang_code="a", repo_id=repo_id)
+    """Load the configured TTS engine lazily.
+
+    v0.5.2 defaults to the German Victoria checkpoint. The currently installed
+    Kokoro release may not register German yet, so COMPUTER adds the minimal
+    in-memory language mapping before creating the pipeline.
+    """
+    global _pipeline, _voice_tensor, _tts_model
+    if _pipeline is not None:
+        return _pipeline
+
+    cfg = _load_config()
+    tts_cfg = cfg.get("tts", {})
+    engine = str(tts_cfg.get("engine", "legacy")).lower()
+
+    from kokoro import KPipeline, KModel
+
+    if engine == "victoria":
+        import torch
+        import kokoro.pipeline as kokoro_pipeline
+        from huggingface_hub import hf_hub_download
+
+        # Compatibility shim matching the upstream German-support mapping.
+        # It changes only this Python process; installed package files stay untouched.
+        kokoro_pipeline.ALIASES.setdefault("de", "d")
+        kokoro_pipeline.LANG_CODES.setdefault("d", "de")
+
+        repo_id = tts_cfg.get("repo_id", "kikiri-tts/kikiri-german-victoria")
+        model_file = tts_cfg.get("model_file", "kikiri_german_victoria_ep10.pth")
+        voice_file = tts_cfg.get("voice_file", "voices/victoria.pt")
+
+        print("[TTS] Loading German Victoria voice (first run may download ~330 MB)...")
+        model_path = hf_hub_download(repo_id=repo_id, filename=model_file)
+        voice_path = hf_hub_download(repo_id=repo_id, filename=voice_file)
+
+        _tts_model = KModel(
+            repo_id="hexgrad/Kokoro-82M",
+            model=model_path,
+        ).to("cpu").eval()
+        _pipeline = KPipeline(
+            lang_code="de",
+            repo_id=repo_id,
+            model=_tts_model,
+            device="cpu",
+        )
+        _voice_tensor = torch.load(voice_path, map_location="cpu", weights_only=True)
+        print("[TTS] German Victoria voice ready.")
+        return _pipeline
+
+    # Legacy Kokoro path retained as a fallback/testing option.
+    repo_id = "hexgrad/Kokoro-82M"
+    if _LOCAL_PTH.exists():
+        _tts_model = KModel(repo_id=repo_id, model=str(_LOCAL_PTH)).to("cpu").eval()
+        _pipeline = KPipeline(lang_code="a", repo_id=repo_id, model=_tts_model)
+    else:
+        _pipeline = KPipeline(lang_code="a", repo_id=repo_id)
     return _pipeline
 
+
 def _get_voice():
-    """Load voice tensor once and cache it."""
+    """Load the configured voice tensor once and cache it."""
     global _voice_tensor
-    if _voice_tensor is None:
-        import torch
-        cfg = _load_config()
-        voice_name = cfg["tts"]["voice"]
-        local_voice = _LOCAL_PTH.parent / f"{voice_name}.pt"
-        if local_voice.exists():
-            _voice_tensor = torch.load(str(local_voice), weights_only=True)
-        else:
-            from huggingface_hub import hf_hub_download
-            path = hf_hub_download(
-                repo_id="hexgrad/Kokoro-82M",
-                filename=f"voices/{voice_name}.pt",
-                local_files_only=False,
-            )
-            _voice_tensor = torch.load(path, weights_only=True)
+    if _voice_tensor is not None:
+        return _voice_tensor
+
+    # _get_pipeline also loads Victoria's dedicated voicepack.
+    _get_pipeline()
+    if _voice_tensor is not None:
+        return _voice_tensor
+
+    import torch
+    cfg = _load_config()
+    voice_name = cfg["tts"].get("voice", "af_heart")
+    local_voice = _LOCAL_PTH.parent / f"{voice_name}.pt"
+    if local_voice.exists():
+        _voice_tensor = torch.load(str(local_voice), weights_only=True)
+    else:
+        from huggingface_hub import hf_hub_download
+        path = hf_hub_download(
+            repo_id="hexgrad/Kokoro-82M",
+            filename=f"voices/{voice_name}.pt",
+            local_files_only=False,
+        )
+        _voice_tensor = torch.load(path, weights_only=True)
     return _voice_tensor
 
 
