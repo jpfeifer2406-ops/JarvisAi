@@ -116,6 +116,13 @@ async def api_delete_provider(provider_key: str):
         return JSONResponse({"status": "error", "message": "Not found"}, status_code=404)
     if provider_key == get_active_provider():
         return JSONResponse({"status": "error", "message": "Cannot delete active provider"}, status_code=400)
+    from jarvis.config_runtime import load_base_config
+    built_in = load_base_config().get("llm", {}).get("providers", {})
+    if provider_key in built_in:
+        return JSONResponse(
+            {"status": "error", "message": "Built-in providers can be edited but not deleted."},
+            status_code=400,
+        )
     del providers[provider_key]
     _save_config(cfg)
     return JSONResponse({"status": "ok"})
