@@ -16,9 +16,23 @@ if %errorlevel% neq 0 (
   exit /b 1
 )
 
-git status --porcelain
+git status --porcelain >nul 2>nul
 if %errorlevel% neq 0 (
   echo [ERROR] This folder is not a Git clone.
+  pause
+  exit /b 1
+)
+
+git diff --quiet
+if %errorlevel% neq 0 (
+  echo [ERROR] Tracked files contain local changes.
+  echo Review or stash them before updating. Runtime settings and workspace files are ignored automatically.
+  pause
+  exit /b 1
+)
+git diff --cached --quiet
+if %errorlevel% neq 0 (
+  echo [ERROR] Staged local changes detected. Commit or stash them before updating.
   pause
   exit /b 1
 )
