@@ -21,6 +21,8 @@ import sounddevice as sd
 import ollama
 from openai import OpenAI
 
+from jarvis.config_runtime import load_config as _runtime_load_config, save_effective_config
+from jarvis.permissions import PermissionBroker, approval_message, requires_approval
 from jarvis.wake import listen_for_wake_word
 from jarvis.stt import record_until_silence, transcribe_audio, set_abort_event
 from jarvis.tts import speak, speak_streamed, is_speaking, stop_speaking
