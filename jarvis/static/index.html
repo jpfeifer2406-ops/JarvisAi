@@ -985,7 +985,7 @@
           <button class="quick-btn" data-cmd="Gib mir den Systemstatus.">Systemstatus</button>
           <button class="quick-btn" data-cmd="Öffne Spotify.">Spotify</button>
           <button class="quick-btn" data-cmd="Nachrichten für Deutschland.">Nachrichten</button>
-          <button class="quick-btn" data-cmd="Suche die wichtigsten aktuellen Technik-Nachrichten.">Tech-News</button>
+          <button class="quick-btn" data-cmd="Suche die wichtigsten aktuellen Technik-Themen im Web.">Tech-News</button>
           <button class="quick-btn" data-cmd="Lies meine Zwischenablage.">Zwischenablage</button>
         </div>
         <div class="section-label">Systemfunktionen</div>
@@ -1374,6 +1374,9 @@ async function loadNewsRegion(key) {
 }
 
 newsCloseBtn.addEventListener('click', closeNewsMode);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && newsOverlay.classList.contains('active')) closeNewsMode();
+});
 document.querySelectorAll('.news-region-btn').forEach(btn => {
   btn.addEventListener('click', () => loadNewsRegion(btn.dataset.newsRegion));
 });
@@ -1395,7 +1398,7 @@ function connect() {
         else if (msg.message === 'Speaking...') { setThinking(false); hideActivity(); setReactorState('speaking'); setStatusText('SPEAKING'); }
         else if (msg.message === 'Transcribing...') { setThinking(true); showActivity('TRANSCRIBING'); setReactorState('thinking'); setStatusText('TRANSCRIBING'); }
         else if (msg.message === 'Session active.') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('SESSION ACTIVE'); }
-        else if (msg.message === 'Standby.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('STANDBY'); }
+        else if (msg.message === 'Standby.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('STANDBY'); closeNewsMode(); }
         else if (msg.message === 'Wake.') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('ACTIVATED'); addMsg('system', 'COMPUTER ACTIVATED'); }
         else if (msg.message === 'Stopped.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('STANDBY'); addMsg('system', 'STOPPED'); }
         else if (msg.message === 'Ready.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('READY'); }
@@ -1413,7 +1416,7 @@ function connect() {
       case 'response': setThinking(false); hideActivity(); setReactorState('speaking'); setStatusText('SPEAKING'); addMsg('assistant', msg.text); addLiveFeed('assistant', msg.text); break;
       case 'mute': isMuted = msg.muted; updateMuteUI(); addMsg('system', msg.muted ? 'MUTED' : 'AUDIO ACTIVE'); break;
       case 'provider_changed': loadProviders(); break;
-      case 'news_mode': openNewsMode(msg); break;
+      case 'news_mode': openNewsMode(msg); setStatusText('NEWS // ' + (msg.region?.label || 'WELT')); break;
     }
   };
 }
