@@ -9,6 +9,8 @@ import urllib.request
 import numpy as np
 import yaml
 
+from jarvis.config_runtime import load_config as _runtime_load_config
+
 _PROJECT_ROOT = Path(__file__).parent.parent
 _CONFIG_PATH = _PROJECT_ROOT / "config.yaml"
 
