@@ -134,6 +134,18 @@ def _split_sentences(text: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+def _audio_array(audio) -> np.ndarray:
+    """Convert Kokoro/Torch output to finite clipped mono float32 audio."""
+    if hasattr(audio, "detach"):
+        audio = audio.detach().cpu().numpy()
+    array = np.asarray(audio, dtype=np.float32).reshape(-1)
+    if not array.size:
+        return array
+    if not np.isfinite(array).all():
+        array = np.nan_to_num(array, nan=0.0, posinf=1.0, neginf=-1.0)
+    return np.clip(array, -1.0, 1.0)
+
+
 def speak_to_bytes(text: str) -> bytes:
     """Convert text to PCM audio bytes using Kokoro TTS."""
     if not text or not text.strip():
@@ -145,11 +157,13 @@ def speak_to_bytes(text: str) -> bytes:
     audio_chunks = []
     for _, _, audio in pipeline(text, voice=voice, speed=speed):
         if audio is not None:
-            audio_chunks.append(audio)
+            chunk = _audio_array(audio)
+            if chunk.size:
+                audio_chunks.append(chunk)
     if not audio_chunks:
         return b""
     combined = np.concatenate(audio_chunks)
-    pcm = (combined * 32767).astype(np.int16)
+    pcm = np.rint(combined * 32767.0).astype(np.int16)
     return pcm.tobytes()
 
 
@@ -228,7 +242,9 @@ def speak_streamed(text: str) -> None:
                 if _interrupt.is_set():
                     break
                 if audio is not None:
-                    chunks.append(audio)
+                    chunk = _audio_array(audio)
+                    if chunk.size:
+                        chunks.append(chunk)
             if not chunks or _interrupt.is_set():
                 break
             combined = np.concatenate(chunks)
