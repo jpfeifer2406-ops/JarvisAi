@@ -43,6 +43,14 @@ if not defined PYTHON_CMD (
 echo [OK] Using: %PYTHON_CMD%
 echo.
 
+where git >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [ERROR] Git for Windows is required by the pinned German voice dependencies.
+    echo Install Git, reopen this window, then run install.bat again.
+    pause
+    exit /b 1
+)
+
 if exist ".venv" (
     echo [INFO] Removing incomplete virtual environment...
     rmdir /s /q ".venv"
@@ -80,6 +88,6 @@ echo  Start COMPUTER with: start.bat
 echo  Web cockpit: http://localhost:7860
 echo  Wake word: Computer
 echo  Default TTS: German Victoria / CPU
- echo  COMPUTER downloads the small custom Computer wake model on first start.
+echo  COMPUTER downloads the small custom Computer wake model on first start.
 echo.
 pause
