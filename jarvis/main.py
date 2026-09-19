@@ -65,6 +65,17 @@ def _is_stop_command(text: str) -> bool:
     }
 
 
+def _is_session_end_command(text: str) -> bool:
+    """Return True when the Captain explicitly ends the active voice session."""
+    cleaned = text.strip().lower().rstrip(".,!?")
+    return cleaned in {
+        "ruhemodus",
+        "computer ruhemodus",
+        "standby",
+        "computer standby",
+    }
+
+
 def _check_abort() -> None:
     """Raise _Aborted if user requested abort."""
     if _abort.is_set():
@@ -297,7 +308,7 @@ def _exec_tool_with_retry(name: str, args: dict) -> str:
 
 
 def handle_wake() -> None:
-    """Called when wake word is detected. Full pipeline: listen → think → speak."""
+    """Wake COMPUTER and keep one active conversation alive until standby."""
     _abort.clear()
     try:
         _handle_wake_inner()
@@ -311,49 +322,86 @@ def handle_wake() -> None:
             _speak_if_unmuted("Captain, ein Fehler ist aufgetreten.")
     finally:
         _abort.clear()
-        _broadcast({"type": "status", "message": "Ready."})
-        print("[COMPUTER] Listening for wake word...")
+        _broadcast({"type": "status", "message": "Standby."})
+        print("[COMPUTER] Standby. Listening for wake word...")
 
 
 def _handle_wake_inner() -> None:
+    """Run a multi-turn voice session after one wake-word activation."""
     if is_speaking():
         stop_speaking()
-    print("[COMPUTER] Wake word detected!")
+
+    cfg = _load_config()
+    session_timeout = int(cfg.get("voice", {}).get("session_timeout_seconds", 120))
+    first_command_timeout = int(cfg.get("voice", {}).get("first_command_timeout_seconds", 20))
+
+    print("[COMPUTER] Wake word detected.")
     _broadcast({"type": "status", "message": "Wake."})
-    _speak_if_unmuted("Bereit, Captain.")
 
-    print("[COMPUTER] Recording...")
-    _broadcast({"type": "status", "message": "Listening..."})
-
-    # Pause wake word mic so STT can use the hardware exclusively
+    # Keep the dedicated wake microphone paused for the whole active session.
+    # This prevents the TTS voice from re-triggering openWakeWord and leaves the
+    # input device exclusively to faster-whisper recording.
     from jarvis.wake import pause_wake_mic, resume_wake_mic
     pause_wake_mic()
-    time.sleep(0.15)  # Give pyaudio time to release the mic
+    time.sleep(0.20)
+
     try:
-        audio = record_until_silence()
+        _speak_if_unmuted("Bereit, Captain.")
+        first_turn = True
+
+        while True:
+            _check_abort()
+            wait_timeout = first_command_timeout if first_turn else session_timeout
+            first_turn = False
+
+            print(f"[COMPUTER] Listening. Inactivity timeout: {wait_timeout}s")
+            _broadcast({"type": "status", "message": "Listening..."})
+
+            audio = record_until_silence(
+                max_seconds=45,
+                speech_wait_seconds=wait_timeout,
+            )
+            _check_abort()
+
+            if audio.size == 0:
+                print("[COMPUTER] No speech detected. Returning to standby.")
+                _broadcast({"type": "status", "message": "Standby."})
+                return
+
+            print(f"[COMPUTER] Recorded {len(audio)/16000:.1f}s, transcribing...")
+            _broadcast({"type": "status", "message": "Transcribing..."})
+            user_text = transcribe_audio(audio).strip()
+
+            if not user_text:
+                print("[COMPUTER] Empty transcription.")
+                _speak_if_unmuted("Nicht verstanden, Captain.")
+                continue
+
+            print(f"[You] {user_text}")
+
+            if _is_session_end_command(user_text):
+                print("[COMPUTER] Ruhemodus.")
+                _broadcast({"type": "status", "message": "Standby."})
+                return
+
+            if _is_stop_command(user_text):
+                abort_all()
+                print("[COMPUTER] Stopped. (voice)")
+                raise _Aborted()
+
+            response_text = _process_request(user_text)
+            _check_abort()
+
+            print(f"[COMPUTER] {response_text}")
+            _broadcast({"type": "status", "message": "Speaking..."})
+            _speak_streamed_if_unmuted(response_text)
+
+            # No second wake word is needed. After speaking, COMPUTER directly
+            # waits for the Captain's next utterance until the inactivity timeout.
+            _broadcast({"type": "status", "message": "Session active."})
+
     finally:
-        resume_wake_mic()  # Always resume wake word detection
-    _check_abort()
-    print(f"[COMPUTER] Recorded {len(audio)/16000:.1f}s of audio, transcribing...")
-    user_text = transcribe_audio(audio)
-    if not user_text.strip():
-        print("[COMPUTER] Transcription empty — didn't catch anything.")
-        _speak_if_unmuted("Nicht verstanden, Captain.")
-        _broadcast({"type": "status", "message": "Ready."})
-        return
-    print(f"[You] {user_text}")
-
-    if _is_stop_command(user_text):
-        abort_all()
-        print("[COMPUTER] Stopped. (voice)")
-        raise _Aborted()
-
-    response_text = _process_request(user_text)
-    _check_abort()
-
-    print(f"[COMPUTER] {response_text}")
-    _broadcast({"type": "status", "message": "Speaking..."})
-    _speak_streamed_if_unmuted(response_text)
+        resume_wake_mic()
 
 
 def _process_request(user_text: str) -> str:
