@@ -166,6 +166,65 @@ async def api_update_settings(request: Request):
     return JSONResponse({"status": "ok"})
 
 
+# ─── Integrations / workshop / diagnostics ───
+
+@app.get("/api/integrations")
+async def api_integrations():
+    from jarvis.integrations import get_integrations_status
+    from jarvis.main import _load_config
+    return JSONResponse(get_integrations_status(_load_config()))
+
+
+@app.post("/api/integrations/browser/ping")
+async def api_browser_ping(request: Request):
+    from jarvis.integrations import note_browser_ping
+    body = await request.json()
+    note_browser_ping(str(body.get("title", "")), str(body.get("url", "")))
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/api/workshop/documents")
+async def api_workshop_documents():
+    from jarvis.workshop import list_documents
+    return JSONResponse({"documents": list_documents()})
+
+
+@app.post("/api/workshop/create")
+async def api_workshop_create(request: Request):
+    from jarvis.workshop import create_document
+    body = await request.json()
+    try:
+        result = await asyncio.get_running_loop().run_in_executor(
+            None,
+            create_document,
+            str(body.get("title", "Dokument")),
+            str(body.get("content", "")),
+            str(body.get("format", "docx")),
+        )
+        return JSONResponse({"status": "ok", "result": result})
+    except Exception as exc:
+        return JSONResponse({"status": "error", "message": str(exc)}, status_code=400)
+
+
+@app.get("/api/diagnostics")
+async def api_diagnostics():
+    from jarvis.main import _load_config
+    from jarvis.tts import tts_available
+    from jarvis.tools.system import get_system_info
+    cfg = _load_config()
+    info = await asyncio.get_running_loop().run_in_executor(None, get_system_info)
+    return JSONResponse({
+        "profile": cfg.get("performance", {}).get("profile", "default"),
+        "stt": cfg.get("stt", {}),
+        "tts": {
+            "engine": cfg.get("tts", {}).get("engine", ""),
+            "device": cfg.get("tts", {}).get("device", "cpu"),
+            "available": tts_available(),
+        },
+        "system": info,
+    })
+
+
 # ─── News APIs ───
 
 @app.get("/api/news")
