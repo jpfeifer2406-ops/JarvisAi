@@ -84,7 +84,7 @@ def _is_session_end_command(text: str) -> bool:
 def _direct_system_response(text: str) -> str | None:
     """Handle deterministic local system questions without asking the LLM."""
     cleaned = re.sub(r"[^a-zäöüß0-9 ]+", " ", text.lower())
-    cleaned = re.sub(r"\\s+", " ", cleaned).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
     time_phrases = (
         "wie spät ist es",
         "wie spaet ist es",
