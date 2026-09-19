@@ -45,7 +45,7 @@ def _get_voice():
             path = hf_hub_download(
                 repo_id="hexgrad/Kokoro-82M",
                 filename=f"voices/{voice_name}.pt",
-                local_files_only=True,
+                local_files_only=False,
             )
             _voice_tensor = torch.load(path, weights_only=True)
     return _voice_tensor
