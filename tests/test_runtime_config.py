@@ -44,3 +44,19 @@ def test_no_override_file_when_effective_equals_base(tmp_path, monkeypatch):
 
     runtime.save_effective_config(runtime.load_config())
     assert not local.exists()
+
+
+def test_runtime_config_loader_wiring():
+    import jarvis.context as context
+    import jarvis.llm as llm
+    import jarvis.stt as stt
+    import jarvis.tts as tts
+    import jarvis.wake as wake
+    import jarvis.tools.code_exec as code_exec
+    import jarvis.tools.file_ops as file_ops
+
+    modules = (context, llm, stt, tts, wake, code_exec, file_ops)
+    for module in modules:
+        cfg = module._load_config()
+        assert isinstance(cfg, dict)
+        assert "tools" in cfg
