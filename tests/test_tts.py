@@ -48,3 +48,14 @@ def test_speak_calls_sounddevice():
         from jarvis.tts import speak
         speak("Engaging thrusters.")
         mock_sd.play.assert_called_once()
+
+
+def test_audio_array_clips_invalid_samples():
+    from jarvis.tts import _audio_array
+    raw = np.array([2.0, -2.0, np.nan, np.inf, -np.inf, 0.25], dtype=np.float32)
+    result = _audio_array(raw)
+    assert result.dtype == np.float32
+    assert np.isfinite(result).all()
+    assert result.max() <= 1.0
+    assert result.min() >= -1.0
+    assert result[-1] == pytest.approx(0.25)
