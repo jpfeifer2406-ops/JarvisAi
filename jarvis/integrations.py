@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -38,6 +39,24 @@ def note_browser_ping(title: str = "", url: str = "") -> None:
 def get_integrations_status(config: dict | None = None) -> dict:
     config = config or {}
     phone_bin = _find_kde_connect()
+    phone_connected = False
+    phone_detail = "Kostenlose KDE-Connect-App noch nicht erkannt."
+    if phone_bin:
+        phone_detail = "KDE Connect erkannt; noch kein erreichbares Gerät bestätigt."
+        try:
+            result = subprocess.run(
+                [phone_bin, "-a"],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+            output = (result.stdout or "").strip()
+            if output and "0 devices found" not in output.lower():
+                phone_connected = True
+                phone_detail = output.splitlines()[0][:300]
+        except Exception:
+            pass
+
     now = time.time()
     with _LOCK:
         browser = dict(_BROWSER_STATE)
@@ -50,9 +69,9 @@ def get_integrations_status(config: dict | None = None) -> dict:
     return {
         "phone": {
             "provider": "KDE Connect",
-            "state": "available" if phone_bin else "not_installed",
-            "connected": False,
-            "detail": "KDE Connect erkannt." if phone_bin else "Kostenlose KDE-Connect-App noch nicht erkannt.",
+            "state": "connected" if phone_connected else ("available" if phone_bin else "not_installed"),
+            "connected": phone_connected,
+            "detail": phone_detail,
             "setup_url": "https://kdeconnect.kde.org/",
         },
         "browser": {
