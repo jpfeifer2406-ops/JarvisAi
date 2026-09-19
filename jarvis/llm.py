@@ -6,8 +6,7 @@ _CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 
 def _load_config():
-    with open(_CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    return _runtime_load_config()
 
 
 def chat(messages: list[dict]) -> str:
