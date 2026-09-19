@@ -15,8 +15,29 @@ _pipeline = None
 _voice_tensor = None
 _speaking = threading.Event()  # set while audio is playing
 _interrupt = threading.Event()  # set to stop streaming
+_tts_available = True
+_tts_error: str | None = None
 
 _LOCAL_PTH = Path.home() / "Downloads" / "kokoro-v1_0.pth"
+
+
+def _disable_tts(exc: Exception) -> None:
+    """Disable TTS for this runtime instead of crashing COMPUTER at startup."""
+    global _tts_available, _tts_error
+    _tts_error = f"{type(exc).__name__}: {exc}"
+    if _tts_available:
+        print(f"[TTS] Kokoro unavailable; continuing without voice. {_tts_error}")
+    _tts_available = False
+    _speaking.clear()
+    try:
+        sd.stop()
+    except Exception:
+        pass
+
+
+def tts_available() -> bool:
+    """Return whether TTS is still available in this runtime."""
+    return _tts_available
 
 def _get_pipeline():
     global _pipeline
@@ -99,21 +120,33 @@ def _wait_or_interrupt() -> bool:
 
 
 def speak(text: str) -> None:
-    """Speak text aloud. Can be interrupted via stop_speaking()."""
-    _interrupt.clear()
-    audio_bytes = speak_to_bytes(text)
-    if not audio_bytes:
+    """Speak text aloud. Can be interrupted via stop_speaking().
+
+    If Kokoro or one of its native dependencies is blocked/unavailable,
+    disable TTS for this runtime and keep the rest of COMPUTER online.
+    """
+    if not _tts_available:
         return
-    audio = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32767
-    _speaking.set()
-    sd.play(audio, samplerate=24000)
-    _wait_or_interrupt()
-    _speaking.clear()
+    _interrupt.clear()
+    try:
+        audio_bytes = speak_to_bytes(text)
+        if not audio_bytes:
+            return
+        audio = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32767
+        _speaking.set()
+        sd.play(audio, samplerate=24000)
+        _wait_or_interrupt()
+    except Exception as exc:
+        _disable_tts(exc)
+    finally:
+        _speaking.clear()
 
 
 def speak_streamed(text: str) -> None:
     """Speak text sentence by sentence — starts playing before full generation is done.
     Can be interrupted mid-stream via stop_speaking()."""
+    if not _tts_available:
+        return
     _interrupt.clear()
     sentences = _split_sentences(text)
     if not sentences:
@@ -124,13 +157,13 @@ def speak_streamed(text: str) -> None:
         speak(text)
         return
 
-    pipeline = _get_pipeline()
-    voice = _get_voice()
-    cfg = _load_config()
-    speed = cfg["tts"]["speed"]
-
-    _speaking.set()
     try:
+        pipeline = _get_pipeline()
+        voice = _get_voice()
+        cfg = _load_config()
+        speed = cfg["tts"]["speed"]
+
+        _speaking.set()
         for sentence in sentences:
             if _interrupt.is_set():
                 break
@@ -146,7 +179,12 @@ def speak_streamed(text: str) -> None:
             sd.play(combined, samplerate=24000)
             if _wait_or_interrupt():
                 break
+    except Exception as exc:
+        _disable_tts(exc)
     finally:
-        sd.stop()  # ensure audio stops even if we break mid-play
+        try:
+            sd.stop()  # ensure audio stops even if we break mid-play
+        except Exception:
+            pass
         _speaking.clear()
         _interrupt.clear()
