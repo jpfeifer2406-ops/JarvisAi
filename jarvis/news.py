@@ -110,7 +110,10 @@ def detect_news_region(text: str) -> NewsRegion | None:
     # Most specific aliases first so NRW wins over broad/global wording.
     for key in ("nrw", "germany", "europe", "usa", "uk", "france", "world"):
         region = REGIONS[key]
-        if any(alias in normalized for alias in region.aliases):
+        if any(
+            re.search(rf"(?<!\\w){re.escape(alias)}(?!\\w)", normalized)
+            for alias in region.aliases
+        ):
             return region
 
     return REGIONS["world"]
