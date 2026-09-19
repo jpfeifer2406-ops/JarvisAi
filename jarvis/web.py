@@ -232,14 +232,14 @@ async def websocket_endpoint(ws: WebSocket):
 
 
 def start_web_background(port: int = 7860) -> None:
-    """Launch web UI in a daemon thread. Non-blocking."""
+    """Launch the local-only web UI in a daemon thread. Non-blocking."""
     from jarvis.main import register_event_listener
     register_event_listener(_broadcast_to_ws)
 
     def _run():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
+        config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
         server = uvicorn.Server(config)
         loop.run_until_complete(server.serve())
 
