@@ -183,6 +183,32 @@ async def api_browser_ping(request: Request):
     return JSONResponse({"status": "ok"})
 
 
+@app.post("/api/integrations/google-drive/connect")
+async def api_google_drive_connect():
+    from jarvis.drive_bridge import connect_google_drive
+    from jarvis.main import _load_config
+    try:
+        result = await asyncio.get_running_loop().run_in_executor(
+            None, connect_google_drive, _load_config()
+        )
+        return JSONResponse({"status": "ok", "message": result})
+    except Exception as exc:
+        return JSONResponse({"status": "error", "message": str(exc)}, status_code=400)
+
+
+@app.get("/api/integrations/google-drive/files")
+async def api_google_drive_files(limit: int = 20):
+    from jarvis.drive_bridge import list_drive_files
+    from jarvis.main import _load_config
+    try:
+        files = await asyncio.get_running_loop().run_in_executor(
+            None, list_drive_files, _load_config(), limit
+        )
+        return JSONResponse({"status": "ok", "files": files})
+    except Exception as exc:
+        return JSONResponse({"status": "error", "message": str(exc)}, status_code=400)
+
+
 @app.get("/api/workshop/documents")
 async def api_workshop_documents():
     from jarvis.workshop import list_documents
