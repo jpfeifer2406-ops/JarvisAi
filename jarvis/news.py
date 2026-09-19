@@ -58,7 +58,7 @@ REGIONS: dict[str, NewsRegion] = {
         lat=54.0,
         lng=15.0,
         altitude=0.92,
-        aliases=("europa", "eu", "europäisch", "europaeisch"),
+        aliases=("europa", "europe", "eu", "europäisch", "europaeisch"),
     ),
     "usa": NewsRegion(
         key="usa",
