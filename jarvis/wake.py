@@ -13,8 +13,7 @@ _CONFIG_PATH = _PROJECT_ROOT / "config.yaml"
 
 
 def _load_config():
-    with open(_CONFIG_PATH, encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    return _runtime_load_config()
 
 
 def _resolve_model_path(cfg: dict) -> Path:
