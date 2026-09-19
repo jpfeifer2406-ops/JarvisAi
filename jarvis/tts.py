@@ -5,11 +5,12 @@ import numpy as np
 import sounddevice as sd
 import threading
 
+from jarvis.config_runtime import load_config as _runtime_load_config
+
 _CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 def _load_config():
-    with open(_CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    return _runtime_load_config()
 
 _pipeline = None
 _voice_tensor = None
@@ -20,6 +21,7 @@ _tts_available = True
 _tts_error: str | None = None
 
 _LOCAL_PTH = Path.home() / "Downloads" / "kokoro-v1_0.pth"
+_VICTORIA_CONFIG = Path(__file__).parent / "tts_assets" / "kikiri_config.json"
 
 
 def _disable_tts(exc: Exception) -> None:
@@ -59,34 +61,35 @@ def _get_pipeline():
 
     if engine == "victoria":
         import torch
-        import kokoro.pipeline as kokoro_pipeline
         from huggingface_hub import hf_hub_download
-
-        # Compatibility shim matching the upstream German-support mapping.
-        # It changes only this Python process; installed package files stay untouched.
-        kokoro_pipeline.ALIASES.setdefault("de", "d")
-        kokoro_pipeline.LANG_CODES.setdefault("d", "de")
+        from misaki.de import DEG2P
 
         repo_id = tts_cfg.get("repo_id", "kikiri-tts/kikiri-german-victoria")
         model_file = tts_cfg.get("model_file", "kikiri_german_victoria_ep10.pth")
         voice_file = tts_cfg.get("voice_file", "voices/victoria.pt")
 
-        print("[TTS] Loading German Victoria voice (first run may download ~330 MB)...")
+        print("[TTS] Loading German Victoria voice on CPU...")
         model_path = hf_hub_download(repo_id=repo_id, filename=model_file)
         voice_path = hf_hub_download(repo_id=repo_id, filename=voice_file)
 
+        # Kikiri's German checkpoints were trained against this exact Kokoro
+        # vocabulary/config and the dedicated German DEG2P frontend.
         _tts_model = KModel(
             repo_id="hexgrad/Kokoro-82M",
+            config=str(_VICTORIA_CONFIG),
             model=model_path,
         ).to("cpu").eval()
         _pipeline = KPipeline(
-            lang_code="de",
-            repo_id=repo_id,
+            lang_code="d",
+            repo_id="hexgrad/Kokoro-82M",
             model=_tts_model,
             device="cpu",
         )
+        # Defensive assignment: the pinned fork already selects DEG2P for "d",
+        # but keeping this explicit prevents a silent fallback to generic eSpeak.
+        _pipeline.g2p = DEG2P()
         _voice_tensor = torch.load(voice_path, map_location="cpu", weights_only=True)
-        print("[TTS] German Victoria voice ready.")
+        print("[TTS] German Victoria voice ready (DEG2P / CPU / 24 kHz).")
         return _pipeline
 
     # Legacy Kokoro path retained as a fallback/testing option.
@@ -133,6 +136,18 @@ def _split_sentences(text: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+def _audio_array(audio) -> np.ndarray:
+    """Convert Kokoro/Torch output to finite clipped mono float32 audio."""
+    if hasattr(audio, "detach"):
+        audio = audio.detach().cpu().numpy()
+    array = np.asarray(audio, dtype=np.float32).reshape(-1)
+    if not array.size:
+        return array
+    if not np.isfinite(array).all():
+        array = np.nan_to_num(array, nan=0.0, posinf=1.0, neginf=-1.0)
+    return np.clip(array, -1.0, 1.0)
+
+
 def speak_to_bytes(text: str) -> bytes:
     """Convert text to PCM audio bytes using Kokoro TTS."""
     if not text or not text.strip():
@@ -144,11 +159,13 @@ def speak_to_bytes(text: str) -> bytes:
     audio_chunks = []
     for _, _, audio in pipeline(text, voice=voice, speed=speed):
         if audio is not None:
-            audio_chunks.append(audio)
+            chunk = _audio_array(audio)
+            if chunk.size:
+                audio_chunks.append(chunk)
     if not audio_chunks:
         return b""
     combined = np.concatenate(audio_chunks)
-    pcm = (combined * 32767).astype(np.int16)
+    pcm = np.rint(combined * 32767.0).astype(np.int16)
     return pcm.tobytes()
 
 
@@ -227,7 +244,9 @@ def speak_streamed(text: str) -> None:
                 if _interrupt.is_set():
                     break
                 if audio is not None:
-                    chunks.append(audio)
+                    chunk = _audio_array(audio)
+                    if chunk.size:
+                        chunks.append(chunk)
             if not chunks or _interrupt.is_set():
                 break
             combined = np.concatenate(chunks)

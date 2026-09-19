@@ -1,51 +1,94 @@
 from __future__ import annotations
+
 from pathlib import Path
+import hashlib
 import threading
 import time
+import urllib.request
+
 import numpy as np
 import yaml
 
-_CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
+from jarvis.config_runtime import load_config as _runtime_load_config
+
+_PROJECT_ROOT = Path(__file__).parent.parent
+_CONFIG_PATH = _PROJECT_ROOT / "config.yaml"
 
 
 def _load_config():
-    with open(_CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    return _runtime_load_config()
 
 
-# ─── Mic pause/resume for STT recording ───
-# When STT needs to record, it pauses the wake word mic so both don't fight
-# over the same hardware device. Wake word detection resumes after recording.
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
+
+def _resolve_model_path(cfg: dict) -> Path:
+    """Resolve/download and verify the configured custom openWakeWord model."""
+    configured = Path(str(cfg["model"]))
+    path = configured if configured.is_absolute() else _PROJECT_ROOT / configured
+    expected_sha = str(cfg.get("model_sha256", "")).strip().lower()
+
+    if path.exists():
+        if not expected_sha or _sha256(path) == expected_sha:
+            return path
+        print("[Wake] Existing COMPUTER wake model failed checksum; downloading clean copy.")
+        path.unlink(missing_ok=True)
+
+    url = str(cfg.get("model_url", "")).strip()
+    if not url:
+        raise FileNotFoundError(f"Wake-word model not found: {path}")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".download")
+    print(f"[Wake] Downloading COMPUTER wake-word model -> {path}")
+    try:
+        urllib.request.urlretrieve(url, tmp)
+        if expected_sha:
+            actual = _sha256(tmp)
+            if actual != expected_sha:
+                raise RuntimeError(
+                    f"Wake-word checksum mismatch: expected {expected_sha}, got {actual}"
+                )
+        tmp.replace(path)
+    finally:
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+    return path
+
+
+# Mic pause/resume for STT recording. When STT needs to record, it pauses the
+# wake-word stream so both components do not compete for the input device.
 _mic_pause = threading.Event()
 
 
 def pause_wake_mic() -> None:
-    """Pause wake word mic stream to free it for STT recording."""
     _mic_pause.set()
 
 
 def resume_wake_mic() -> None:
-    """Resume wake word mic stream after STT recording is done."""
     _mic_pause.clear()
 
 
 def listen_for_wake_word(callback) -> None:
-    """
-    Continuously listen for wake word. Calls callback() when detected.
-    Blocking — runs forever in the calling thread.
-
-    - IDLE: wake word → start callback (listen for command)
-    - BUSY: wake word → abort (stop talking/processing)
-
-    Short cooldown after normal wake prevents "Yes?" echo from re-triggering.
-    Mic is paused/resumed via pause_wake_mic()/resume_wake_mic() during STT.
-    """
+    """Listen continuously for the configured COMPUTER wake word."""
     import pyaudio
     from openwakeword.model import Model
 
     cfg = _load_config()["wake_word"]
-    oww = Model(wakeword_models=[cfg["model"]], inference_framework="onnx")
+    model_path = _resolve_model_path(cfg)
+    phrase = str(cfg.get("phrase", "Computer"))
+    threshold = float(cfg.get("threshold", 0.72))
+    required_hits = max(1, int(cfg.get("required_hits", 1)))
+    chunk_size = int(cfg.get("chunk_size", 1280))
+
+    # Custom Computer v2 model from the Home Assistant wake-word collection.
+    # ONNX inference stays on CPU and is intentionally independent of CUDA.
+    oww = Model(wakeword_models=[str(model_path)], inference_framework="onnx")
 
     audio = pyaudio.PyAudio()
     mic = audio.open(
@@ -53,63 +96,67 @@ def listen_for_wake_word(callback) -> None:
         channels=1,
         rate=16000,
         input=True,
-        frames_per_buffer=cfg["chunk_size"],
+        frames_per_buffer=chunk_size,
     )
 
     _busy = threading.Lock()
     _ignore_until = [0.0]
+    hit_count = 0
 
-    print("[Jarvis] Listening for wake word...")
+    print(f"[COMPUTER] Listening for wake word: {phrase.upper()}...")
     try:
         while True:
-            # ── Mic pause: STT is recording, yield the hardware ──
             if _mic_pause.is_set():
                 if mic.is_active():
                     mic.stop_stream()
                     print("[Wake] Mic paused for STT recording.")
                 while _mic_pause.is_set():
                     time.sleep(0.05)
-                # Resume after STT is done
                 mic.start_stream()
-                oww.reset()  # Clear stale predictions
+                oww.reset()
                 print("[Wake] Mic resumed.")
                 continue
 
             try:
-                pcm = np.frombuffer(mic.read(cfg["chunk_size"]), dtype=np.int16)
+                pcm = np.frombuffer(
+                    mic.read(chunk_size, exception_on_overflow=False),
+                    dtype=np.int16,
+                )
             except Exception:
                 time.sleep(0.05)
                 continue
 
             predictions = oww.predict(pcm)
-            score = predictions.get(cfg["model"], 0)
-
-            if score < cfg["threshold"]:
+            # Only one wake model is loaded, but its result key is derived from
+            # the ONNX graph/filename. max() avoids coupling to that internal key.
+            score = max((float(v) for v in predictions.values()), default=0.0)
+            if score >= threshold:
+                hit_count += 1
+            else:
+                hit_count = 0
+                continue
+            if hit_count < required_hits:
                 continue
 
+            hit_count = 0
             oww.reset()
             now = time.time()
-
-            # Skip if in cooldown window (prevents echo re-trigger)
             if now < _ignore_until[0]:
                 continue
 
             if _busy.locked():
-                # BUSY: wake word = stop everything
                 _ignore_until[0] = now + 3.0
                 from jarvis.main import abort_all
                 abort_all()
-                print("[Jarvis] Stopped. (voice interrupt)")
+                print("[COMPUTER] Stopped. (voice interrupt)")
             else:
-                # IDLE: normal wake — 2s cooldown to skip "Yes?" echo
                 _ignore_until[0] = now + 2.0
 
                 def _run():
                     with _busy:
                         callback()
 
-                t = threading.Thread(target=_run, daemon=True)
-                t.start()
+                threading.Thread(target=_run, daemon=True).start()
     finally:
         mic.stop_stream()
         mic.close()

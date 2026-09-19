@@ -1,11 +1,11 @@
 @echo off
 setlocal EnableExtensions
-title COMPUTER v0.5.2 TEST Installer
+title COMPUTER v0.6.0 TEST Installer
 cd /d "%~dp0"
 
 echo.
 echo  ============================================
-echo   COMPUTER v0.5.2 TEST - JarvisAi Fork
+echo   COMPUTER v0.6.0 TEST - JarvisAi Fork
 echo  ============================================
 echo.
 echo  Kokoro currently requires Python 3.11 or 3.12.
@@ -43,6 +43,14 @@ if not defined PYTHON_CMD (
 echo [OK] Using: %PYTHON_CMD%
 echo.
 
+where git >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [ERROR] Git for Windows is required by the pinned German voice dependencies.
+    echo Install Git, reopen this window, then run install.bat again.
+    pause
+    exit /b 1
+)
+
 if exist ".venv" (
     echo [INFO] Removing incomplete virtual environment...
     rmdir /s /q ".venv"
@@ -68,8 +76,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [4/4] Downloading wake word models...
-python -c "from openwakeword import utils; utils.download_models()" 2>nul
+echo [4/4] Preparing lightweight wake-word runtime...
 python -c "import openwakeword, os, urllib.request; d=os.path.join(os.path.dirname(openwakeword.__file__),'resources','models'); os.makedirs(d,exist_ok=True); [urllib.request.urlretrieve('https://github.com/dscripka/openWakeWord/raw/main/openwakeword/resources/models/'+f, os.path.join(d,f)) for f in ['melspectrogram.onnx','embedding_model.onnx'] if not os.path.exists(os.path.join(d,f))]" 2>nul
 
 echo.
@@ -79,7 +86,8 @@ echo  ============================================
 echo.
 echo  Start COMPUTER with: start.bat
 echo  Web cockpit: http://localhost:7860
-echo  Temporary wake word: Hey Jarvis
-echo  Default TTS: German Victoria (downloads on first voice use)
+echo  Wake word: Computer
+echo  Default TTS: German Victoria / CPU
+echo  COMPUTER downloads the small custom Computer wake model on first start.
 echo.
 pause

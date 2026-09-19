@@ -11,6 +11,7 @@ def test_tts_speak_returns_audio_bytes():
     """TTS should return audio bytes for valid text."""
     mock_audio = np.ones(100, dtype=np.float32) * 0.1
     with patch("jarvis.tts._get_pipeline") as mock_get_pipeline, \
+         patch("jarvis.tts._get_voice", return_value="test-voice"), \
          patch("jarvis.tts._load_config", return_value=STUB_CONFIG):
         mock_pipeline = MagicMock()
         mock_pipeline.return_value = iter([(None, None, mock_audio)])
@@ -39,7 +40,9 @@ def test_speak_calls_sounddevice():
     # Stream is active on first call, then inactive — exits the poll loop
     mock_stream.active = False
     with patch("jarvis.tts._get_pipeline") as mock_get_pipeline, \
+         patch("jarvis.tts._get_voice", return_value="test-voice"), \
          patch("jarvis.tts._load_config", return_value=STUB_CONFIG), \
+         patch("jarvis.tts._tts_available", True), \
          patch("jarvis.tts.sd") as mock_sd:
         mock_sd.get_stream.return_value = mock_stream
         mock_pipeline = MagicMock()
@@ -48,3 +51,14 @@ def test_speak_calls_sounddevice():
         from jarvis.tts import speak
         speak("Engaging thrusters.")
         mock_sd.play.assert_called_once()
+
+
+def test_audio_array_clips_invalid_samples():
+    from jarvis.tts import _audio_array
+    raw = np.array([2.0, -2.0, np.nan, np.inf, -np.inf, 0.25], dtype=np.float32)
+    result = _audio_array(raw)
+    assert result.dtype == np.float32
+    assert np.isfinite(result).all()
+    assert result.max() <= 1.0
+    assert result.min() >= -1.0
+    assert result[-1] == pytest.approx(0.25)

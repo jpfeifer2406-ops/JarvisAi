@@ -5,11 +5,12 @@ import os
 import yaml
 from pathlib import Path
 
+from jarvis.config_runtime import load_config as _runtime_load_config
+
 _CONFIG_PATH = Path(__file__).parent.parent.parent / "config.yaml"
 
 def _load_config():
-    with open(_CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    return _runtime_load_config()
 
 def run_python(code: str) -> str:
     """Execute Python code in a subprocess sandbox. Returns stdout/stderr."""

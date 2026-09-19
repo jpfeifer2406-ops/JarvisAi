@@ -2,11 +2,12 @@ from pathlib import Path
 import yaml
 import numpy as np
 
+from jarvis.config_runtime import load_config as _runtime_load_config
+
 _CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 def _load_config():
-    with open(_CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    return _runtime_load_config()
 
 _model = None
 _model_device = None  # track what device the model is on
@@ -44,7 +45,8 @@ def transcribe_audio(audio: np.ndarray) -> str:
         model = _get_model()
         cfg = _load_config()
         language = cfg.get("stt", {}).get("language", "de")
-        segments, _ = model.transcribe(audio, beam_size=5, language=language)
+        beam_size = int(cfg.get("stt", {}).get("beam_size", 1))
+        segments, _ = model.transcribe(audio, beam_size=beam_size, language=language)
         return " ".join(seg.text.strip() for seg in segments).strip()
     except Exception as e:
         # If CUDA worked for loading but fails during inference, retry on CPU
@@ -54,7 +56,8 @@ def transcribe_audio(audio: np.ndarray) -> str:
                 model = _get_model(force_cpu=True)
                 cfg = _load_config()
                 language = cfg.get("stt", {}).get("language", "de")
-                segments, _ = model.transcribe(audio, beam_size=5, language=language)
+                beam_size = int(cfg.get("stt", {}).get("beam_size", 1))
+                segments, _ = model.transcribe(audio, beam_size=beam_size, language=language)
                 return " ".join(seg.text.strip() for seg in segments).strip()
             except Exception as e2:
                 print(f"[STT] CPU transcription also failed: {e2}")

@@ -140,7 +140,7 @@ def show_notification(title: str, message: str) -> str:
         f"$text[0].AppendChild($xml.CreateTextNode('{safe_title}')) > $null;"
         f"$text[1].AppendChild($xml.CreateTextNode('{safe_msg}')) > $null;"
         "$toast = [Windows.UI.Notifications.ToastNotification]::new($xml);"
-        "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Jarvis').Show($toast)"
+        "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('COMPUTER').Show($toast)"
     )
     result = subprocess.run(["powershell", "-command", ps], capture_output=True, text=True)
     if result.returncode == 0:
@@ -155,7 +155,7 @@ _timers: list = []
 def set_timer(seconds: int, message: str = "Timer done!") -> str:
     """Set a timer that shows a notification after N seconds."""
     def _timer_cb():
-        show_notification("Jarvis Timer", message)
+        show_notification("COMPUTER Timer", message)
 
     t = threading.Timer(seconds, _timer_cb)
     t.daemon = True

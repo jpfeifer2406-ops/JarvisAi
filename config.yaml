@@ -1,12 +1,17 @@
 wake_word:
-  model: hey_jarvis
-  threshold: 0.5
+  phrase: Computer
+  model: jarvis/data/wake/computer_v2.onnx
+  model_url: https://raw.githubusercontent.com/fwartner/home-assistant-wakewords-collection/8bcd2f20bb7b76c351b2eff871fa1ce873fe9be2/en/computer/computer_v2.onnx
+  model_sha256: 5e8157e8a0b2bbf4708452ccf8d0dc3397b6e81fba4dad097a8ba9192894ab3a
+  threshold: 0.72
+  required_hits: 2
   chunk_size: 1280
 stt:
-  model: small
-  device: cuda
+  model: base
+  device: cpu
   compute_type: int8
   language: de
+  beam_size: 1
 llm:
   active_provider: ollama
   temperature: 0.7
@@ -16,6 +21,8 @@ llm:
       label: Ollama (Local)
       model: qwen2.5:1.5b
       base_url: http://localhost:11434
+      num_ctx: 2048
+      num_predict: 220
 context:
   max_messages: 10
   summarize_after: 8
@@ -28,17 +35,32 @@ tts:
   model_file: kikiri_german_victoria_ep10.pth
   voice_file: voices/victoria.pt
   speed: 1.0
+  device: cpu
 memory:
   db_path: jarvis/data/memory.db
   chroma_path: jarvis/data/chroma
   top_k: 3
 tools:
   allowed_paths:
+  - ./workspace
   - ~/Documents
   - ~/Desktop
   - ~/Downloads
   code_timeout: 10
-
 voice:
   session_timeout_seconds: 120
   first_command_timeout_seconds: 20
+performance:
+  profile: cpu_test
+  note: CPU-first validation profile for v0.6.0
+workspace:
+  path: workspace
+integrations:
+  phone:
+    provider: kde_connect
+  browser:
+    provider: computer_extension
+  google_drive:
+    provider: google_oauth
+    client_secret_path: jarvis/data/google_client_secret.json
+    token_path: jarvis/data/google_drive_token.json

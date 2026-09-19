@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "COMPUTER Browser Bridge",
+  "version": "0.6.0",
+  "description": "Local bridge between the browser and COMPUTER.",
+  "permissions": ["tabs", "alarms"],
+  "host_permissions": ["http://127.0.0.1:7860/*"],
+  "background": {
+    "service_worker": "service_worker.js"
+  }
+}

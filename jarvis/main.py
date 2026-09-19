@@ -21,6 +21,8 @@ import sounddevice as sd
 import ollama
 from openai import OpenAI
 
+from jarvis.config_runtime import load_config as _runtime_load_config, save_effective_config
+from jarvis.permissions import PermissionBroker, approval_message, requires_approval
 from jarvis.wake import listen_for_wake_word
 from jarvis.stt import record_until_silence, transcribe_audio, set_abort_event
 from jarvis.tts import speak, speak_streamed, is_speaking, stop_speaking
@@ -28,7 +30,7 @@ from jarvis.context import ContextManager
 from jarvis.memory import Memory
 from jarvis.tools.router import TOOL_SCHEMAS, dispatch
 from jarvis.news import build_news_payload, build_spoken_briefing
-from jarvis.ui_commands import detect_ui_command
+from jarvis.ui_commands import detect_ui_command, detect_overlay_command
 
 _MAX_TOOL_LOOPS = 15
 _CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
@@ -39,6 +41,7 @@ set_abort_event(_abort)  # Let STT check abort during recording
 # Global mute — INSERT toggles this, skips TTS when set
 _muted = threading.Event()
 _last_news_payload: dict | None = None
+_permission_broker = PermissionBroker(ttl_seconds=120)
 
 # --- Message bus: push events to all connected web clients ---
 _event_listeners: list = []  # list of callables: fn(event_dict)
@@ -137,11 +140,47 @@ def process_request(user_text: str) -> str:
     """Route deterministic COMPUTER modes before falling back to the LLM agent."""
     global _last_news_payload
 
+    decision, pending = _permission_broker.decide(user_text)
+    if decision == "cancel" and pending is not None:
+        response = f"Aktion abgebrochen: {pending.name}."
+        _broadcast({"type": "user", "text": user_text})
+        _broadcast({"type": "response", "text": response})
+        context.add("user", user_text)
+        context.add("assistant", response)
+        return response
+    if decision == "approve" and pending is not None:
+        _broadcast({"type": "user", "text": user_text})
+        _broadcast({"type": "tool", "name": pending.name, "args": pending.args})
+        result = dispatch(pending.name, pending.args)
+        _broadcast({"type": "tool_result", "name": pending.name, "result": result[:200]})
+        response = f"Ausgeführt: {result}"
+        _broadcast({"type": "response", "text": response})
+        context.add("user", user_text)
+        context.add("assistant", response)
+        return response
+
     ui_open = detect_ui_command(user_text)
     if ui_open is not None:
         response = "Eingabe geöffnet, Captain." if ui_open else "Eingabe geschlossen, Captain."
         _broadcast({"type": "user", "text": user_text})
         _broadcast({"type": "ui_mode", "panel": "chat", "open": ui_open})
+        _broadcast({"type": "response", "text": response})
+        context.add("user", user_text)
+        context.add("assistant", response)
+        return response
+
+    overlay = detect_overlay_command(user_text)
+    if overlay is not None:
+        panel, open_state = overlay
+        labels = {
+            "settings": "Einstellungen",
+            "workshop": "Creative-Werkstatt",
+            "call": "Call-Overlay",
+        }
+        label = labels.get(panel, panel)
+        response = f"{label} {'geöffnet' if open_state else 'geschlossen'}, Captain."
+        _broadcast({"type": "user", "text": user_text})
+        _broadcast({"type": "ui_mode", "panel": panel, "open": open_state})
         _broadcast({"type": "response", "text": response})
         context.add("user", user_text)
         context.add("assistant", response)
@@ -234,7 +273,10 @@ def _system_prompt() -> str:
         "- Prüfe Ergebnisse nach Tool-Aufrufen, bevor du behauptest, eine Aktion sei abgeschlossen.\n"
         "- Erfinde niemals Tool-Ergebnisse, Dateien, Quellen oder ausgeführte Aktionen.\n"
         "- Wenn etwas nicht verfügbar ist, sage es klar.\n"
-        "- Im Nachrichtenmodus zuerst nur eine kurze Lageübersicht geben; vertiefen erst auf ausdrücklichen Wunsch.\n\n"
+        "- Im Nachrichtenmodus zuerst nur eine kurze Lageübersicht geben; vertiefen erst auf ausdrücklichen Wunsch.\n"
+        "- Für Dokumente bevorzugst du create_document/read_document/revise_document/list_documents. "
+        "Entwürfe landen im COMPUTER Workspace; bestehende Originale werden nicht still überschrieben.\n"
+        "- Call-, Werkstatt- und Einstellungsansichten sind Cockpit-Modi; behaupte keine Telefon- oder Cloud-Verbindung, wenn sie nicht verbunden ist.\n\n"
         "SICHERHEITSMODELL:\n"
         "READ: lesen, suchen, analysieren -> ohne zusätzliche Freigabe.\n"
         "PREPARE: Entwürfe und Vorbereitungen -> ohne zusätzliche Freigabe.\n"
@@ -253,13 +295,11 @@ def _system_prompt() -> str:
         f"Aktuelles lokales Datum und Uhrzeit des Systems: {now}."
     )
 def _load_config() -> dict:
-    with open(_CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    return _runtime_load_config()
 
 
 def _save_config(cfg: dict) -> None:
-    with open(_CONFIG_PATH, "w") as f:
-        yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
+    save_effective_config(cfg)
 
 
 def get_providers() -> dict:
@@ -337,6 +377,8 @@ def _call_openai_provider(provider_cfg: dict, temperature: float, full_messages:
                 result = _exec_tool_with_retry(tc.function.name, args)
                 print(f"[Tool: {tc.function.name}] {result[:120]}")
                 _broadcast({"type": "tool_result", "name": tc.function.name, "result": result[:200]})
+                if result.startswith("APPROVAL_REQUIRED: "):
+                    return result.removeprefix("APPROVAL_REQUIRED: ")
                 full_messages.append({
                     "role": "tool",
                     "content": result,
@@ -350,10 +392,21 @@ def _call_openai_provider(provider_cfg: dict, temperature: float, full_messages:
 def _call_ollama_provider(provider_cfg: dict, temperature: float, full_messages: list[dict]) -> str:
     """Call Ollama provider."""
     model = provider_cfg["model"]
+    options = {}
+    if provider_cfg.get("num_ctx"):
+        options["num_ctx"] = int(provider_cfg["num_ctx"])
+    if provider_cfg.get("num_predict"):
+        options["num_predict"] = int(provider_cfg["num_predict"])
     tool_count = 0
     for _ in range(_MAX_TOOL_LOOPS):
         _check_abort()
-        response = ollama.chat(model=model, messages=full_messages, tools=TOOL_SCHEMAS)
+        response = ollama.chat(
+            model=model,
+            messages=full_messages,
+            tools=TOOL_SCHEMAS,
+            options=options or None,
+            keep_alive="10m",
+        )
         if response.message.tool_calls:
             full_messages.append(response.message.model_dump())
             for tc in response.message.tool_calls:
@@ -366,6 +419,8 @@ def _call_ollama_provider(provider_cfg: dict, temperature: float, full_messages:
                 result = _exec_tool_with_retry(tc.function.name, args)
                 print(f"[Tool: {tc.function.name}] {result[:120]}")
                 _broadcast({"type": "tool_result", "name": tc.function.name, "result": result[:200]})
+                if result.startswith("APPROVAL_REQUIRED: "):
+                    return result.removeprefix("APPROVAL_REQUIRED: ")
                 full_messages.append({
                     "role": "tool",
                     "content": result,
@@ -393,7 +448,11 @@ def _call_llm(full_messages: list[dict]) -> str:
 
 
 def _exec_tool_with_retry(name: str, args: dict) -> str:
-    """Execute a tool, retry once on failure."""
+    """Execute safe tools immediately and stage state-changing tools for approval."""
+    if requires_approval(name):
+        pending = _permission_broker.stage(name, args)
+        return "APPROVAL_REQUIRED: " + approval_message(pending)
+
     result = dispatch(name, args)
     if result.startswith("Tool '") and "failed:" in result:
         time.sleep(0.5)

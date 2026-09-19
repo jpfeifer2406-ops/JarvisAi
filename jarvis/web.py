@@ -116,6 +116,13 @@ async def api_delete_provider(provider_key: str):
         return JSONResponse({"status": "error", "message": "Not found"}, status_code=404)
     if provider_key == get_active_provider():
         return JSONResponse({"status": "error", "message": "Cannot delete active provider"}, status_code=400)
+    from jarvis.config_runtime import load_base_config
+    built_in = load_base_config().get("llm", {}).get("providers", {})
+    if provider_key in built_in:
+        return JSONResponse(
+            {"status": "error", "message": "Built-in providers can be edited but not deleted."},
+            status_code=400,
+        )
     del providers[provider_key]
     _save_config(cfg)
     return JSONResponse({"status": "ok"})
@@ -164,6 +171,91 @@ async def api_update_settings(request: Request):
 
     _save_config(cfg)
     return JSONResponse({"status": "ok"})
+
+
+# ─── Integrations / workshop / diagnostics ───
+
+@app.get("/api/integrations")
+async def api_integrations():
+    from jarvis.integrations import get_integrations_status
+    from jarvis.main import _load_config
+    return JSONResponse(get_integrations_status(_load_config()))
+
+
+@app.post("/api/integrations/browser/ping")
+async def api_browser_ping(request: Request):
+    from jarvis.integrations import note_browser_ping
+    body = await request.json()
+    note_browser_ping(str(body.get("title", "")), str(body.get("url", "")))
+    return JSONResponse({"status": "ok"})
+
+
+@app.post("/api/integrations/google-drive/connect")
+async def api_google_drive_connect():
+    from jarvis.drive_bridge import connect_google_drive
+    from jarvis.main import _load_config
+    try:
+        result = await asyncio.get_running_loop().run_in_executor(
+            None, connect_google_drive, _load_config()
+        )
+        return JSONResponse({"status": "ok", "message": result})
+    except Exception as exc:
+        return JSONResponse({"status": "error", "message": str(exc)}, status_code=400)
+
+
+@app.get("/api/integrations/google-drive/files")
+async def api_google_drive_files(limit: int = 20):
+    from jarvis.drive_bridge import list_drive_files
+    from jarvis.main import _load_config
+    try:
+        files = await asyncio.get_running_loop().run_in_executor(
+            None, list_drive_files, _load_config(), limit
+        )
+        return JSONResponse({"status": "ok", "files": files})
+    except Exception as exc:
+        return JSONResponse({"status": "error", "message": str(exc)}, status_code=400)
+
+
+@app.get("/api/workshop/documents")
+async def api_workshop_documents():
+    from jarvis.workshop import list_documents
+    return JSONResponse({"documents": list_documents()})
+
+
+@app.post("/api/workshop/create")
+async def api_workshop_create(request: Request):
+    from jarvis.workshop import create_document
+    body = await request.json()
+    try:
+        result = await asyncio.get_running_loop().run_in_executor(
+            None,
+            create_document,
+            str(body.get("title", "Dokument")),
+            str(body.get("content", "")),
+            str(body.get("format", "docx")),
+        )
+        return JSONResponse({"status": "ok", "result": result})
+    except Exception as exc:
+        return JSONResponse({"status": "error", "message": str(exc)}, status_code=400)
+
+
+@app.get("/api/diagnostics")
+async def api_diagnostics():
+    from jarvis.main import _load_config
+    from jarvis.tts import tts_available
+    from jarvis.tools.system import get_system_info
+    cfg = _load_config()
+    info = await asyncio.get_running_loop().run_in_executor(None, get_system_info)
+    return JSONResponse({
+        "profile": cfg.get("performance", {}).get("profile", "default"),
+        "stt": cfg.get("stt", {}),
+        "tts": {
+            "engine": cfg.get("tts", {}).get("engine", ""),
+            "device": cfg.get("tts", {}).get("device", "cpu"),
+            "available": tts_available(),
+        },
+        "system": info,
+    })
 
 
 # ─── News APIs ───
