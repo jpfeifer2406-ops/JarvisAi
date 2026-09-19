@@ -33,3 +33,7 @@ tools:
   - ~/Desktop
   - ~/Downloads
   code_timeout: 10
+
+voice:
+  session_timeout_seconds: 120
+  first_command_timeout_seconds: 20
