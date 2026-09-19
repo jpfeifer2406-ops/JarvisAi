@@ -221,7 +221,12 @@ async def websocket_endpoint(ws: WebSocket):
                 from jarvis.main import abort_all
                 abort_all()
 
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError) as exc:
+        # Starlette may raise RuntimeError instead of WebSocketDisconnect when
+        # the browser refreshes/closes while receive_text() is awaiting data.
+        # Treat that as a normal client disconnect, not an application error.
+        if isinstance(exc, RuntimeError) and "WebSocket is not connected" not in str(exc):
+            raise
         if ws in _clients:
             _clients.remove(ws)
 
