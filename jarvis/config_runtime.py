@@ -48,9 +48,14 @@ def _deep_diff(value: Any, base: Any):
     return _MISSING
 
 
+def load_base_config() -> dict:
+    """Load tracked repository defaults only."""
+    return _read_yaml(_BASE_CONFIG)
+
+
 def load_config() -> dict:
     """Load tracked defaults plus ignored machine-local overrides."""
-    return _deep_merge(_read_yaml(_BASE_CONFIG), _read_yaml(_LOCAL_CONFIG))
+    return _deep_merge(load_base_config(), _read_yaml(_LOCAL_CONFIG))
 
 
 def save_effective_config(config: dict) -> None:
