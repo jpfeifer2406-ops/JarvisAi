@@ -55,3 +55,8 @@ def test_fetch_news_falls_back_and_deduplicates(monkeypatch):
     items = fetch_news(REGIONS["germany"], max_results=6)
 
     assert [item["title"] for item in items] == ["A", "B", "C"]
+
+
+def test_short_aliases_do_not_match_inside_words():
+    # "eu" must not accidentally match the middle of "neue".
+    assert detect_news_region("Neue Nachrichten bitte").key == "world"
