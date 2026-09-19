@@ -1,8 +1,10 @@
 wake_word:
   phrase: Computer
   model: jarvis/data/wake/computer_v2.onnx
-  model_url: https://raw.githubusercontent.com/fwartner/home-assistant-wakewords-collection/main/en/computer/computer_v2.onnx
+  model_url: https://raw.githubusercontent.com/fwartner/home-assistant-wakewords-collection/8bcd2f20bb7b76c351b2eff871fa1ce873fe9be2/en/computer/computer_v2.onnx
+  model_sha256: 5e8157e8a0b2bbf4708452ccf8d0dc3397b6e81fba4dad097a8ba9192894ab3a
   threshold: 0.72
+  required_hits: 2
   chunk_size: 1280
 stt:
   model: base
