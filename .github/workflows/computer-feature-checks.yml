@@ -21,9 +21,11 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install feature test dependencies
-        run: python -m pip install pytest ddgs pyyaml numpy sounddevice python-docx reportlab pypdf
+        run: python -m pip install pytest ddgs pyyaml numpy sounddevice python-docx reportlab pypdf ruff
       - name: Compile changed Python modules
-        run: python -m py_compile jarvis/config_runtime.py jarvis/permissions.py jarvis/news.py jarvis/main.py jarvis/web.py jarvis/tts.py jarvis/ui_commands.py jarvis/wake.py jarvis/integrations.py jarvis/workshop.py jarvis/tools/router.py
+        run: python -m py_compile jarvis/config_runtime.py jarvis/permissions.py jarvis/news.py jarvis/main.py jarvis/web.py jarvis/stt.py jarvis/tts.py jarvis/wake.py jarvis/context.py jarvis/llm.py jarvis/tools/file_ops.py jarvis/tools/code_exec.py jarvis/ui_commands.py jarvis/integrations.py jarvis/workshop.py jarvis/tools/router.py
+      - name: Check undefined runtime names
+        run: ruff check --select F821 jarvis/main.py jarvis/stt.py jarvis/tts.py jarvis/wake.py jarvis/context.py jarvis/llm.py jarvis/tools/file_ops.py jarvis/tools/code_exec.py
       - name: Check inline cockpit JavaScript syntax
         shell: pwsh
         run: |
