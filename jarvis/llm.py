@@ -2,6 +2,8 @@
 from pathlib import Path
 import yaml
 
+from jarvis.config_runtime import load_config as _runtime_load_config
+
 _CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 
