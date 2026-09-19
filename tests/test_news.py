@@ -17,6 +17,11 @@ def test_detect_news_region_germany_and_nrw():
     assert detect_news_region("Zeig mir die News aus NRW").key == "nrw"
 
 
+def test_detect_news_region_english_europe():
+    # Whisper may occasionally render a German request with the English region name.
+    assert detect_news_region("Okay, show me the news in Europe.").key == "europe"
+
+
 def test_non_news_request_is_ignored():
     assert detect_news_region("Öffne Spotify") is None
 
