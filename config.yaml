@@ -21,7 +21,7 @@ context:
   max_tokens: 2500
 tts:
   voice: af_heart
-  speed: 1.1
+  speed: 1.0
 memory:
   db_path: jarvis/data/memory.db
   chroma_path: jarvis/data/chroma
@@ -30,4 +30,5 @@ tools:
   allowed_paths:
   - ~/Documents
   - ~/Desktop
+  - ~/Downloads
   code_timeout: 10
