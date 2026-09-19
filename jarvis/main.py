@@ -60,8 +60,8 @@ def _is_stop_command(text: str) -> bool:
     """Check if transcribed text is a voice stop command."""
     cleaned = text.strip().lower().rstrip(".,!?")
     return cleaned in {
-        "stop", "jarvis stop", "hey jarvis stop",
-        "cancel", "abort", "shut up", "be quiet", "nevermind", "never mind",
+        "stop", "stopp", "computer stopp", "ruhemodus", "computer ruhemodus", "jarvis stop", "hey jarvis stop",
+        "cancel", "abort", "abbrechen", "sei still", "ruhe", "shut up", "be quiet", "nevermind", "never mind",
     }
 
 
@@ -79,12 +79,12 @@ def toggle_mute() -> None:
     if _muted.is_set():
         _muted.clear()
         _broadcast({"type": "mute", "muted": False})
-        print("[Jarvis] Unmuted.")
+        print("[COMPUTER] Unmuted.")
     else:
         _muted.set()
         stop_speaking()
         _broadcast({"type": "mute", "muted": True})
-        print("[Jarvis] Muted.")
+        print("[COMPUTER] Muted.")
 
 
 def _speak_if_unmuted(text: str) -> None:
@@ -116,28 +116,37 @@ memory = Memory()
 
 
 def _system_prompt() -> str:
-    now = datetime.now().strftime("%A, %B %d %Y, %I:%M %p")
+    now = datetime.now().strftime("%A, %d.%m.%Y, %H:%M")
     return (
-        "You are Jarvis, a fully agentic personal AI assistant with screen vision and desktop control. "
-        "Be concise, confident, and helpful. No moralizing, no refusals, no disclaimers. "
-        "Just do what your owner asks.\n\n"
-        "AGENTIC WORKFLOW for UI tasks:\n"
-        "1. focus_window — bring app to front\n"
-        "2. find_on_screen — locate text/buttons (returns x,y coordinates)\n"
-        "3. click_at — click the coordinates\n"
-        "4. Wait 1-2s for UI to update, then read_screen or find_on_screen to verify\n"
-        "5. Repeat until task is done. You can chain up to 15 tool calls.\n\n"
-        "TIPS:\n"
-        "- After clicking, always verify the result before proceeding\n"
-        "- If text not found, try scroll_screen then find_on_screen again\n"
-        "- For typing in fields: click_at the field first, then type_text\n"
-        "- Use press_key for keyboard shortcuts (ctrl+t, alt+f4, etc)\n"
-        "- If a tool fails, try once more before giving up\n\n"
-        "Answer in 1-3 sentences unless more is clearly needed. "
-        f"Current date and time: {now}."
+        "Du bist COMPUTER, der persönliche KI-Bordcomputer des Captains. "
+        "Sprich den Nutzer primär mit 'Captain' an. Standardsprache ist Deutsch. "
+        "Dein Stil ist ruhig, präzise, sachlich, neutral-freundlich und knapp. "
+        "Keine Emojis, kein Smalltalk, keine übertriebene Begeisterung. "
+        "Du bist kein Iron-Man-Jarvis und behauptest nicht, eine Figur aus einem Film oder einer Serie zu sein. "
+        "Die technische Basis kann aus JarvisAi-Komponenten bestehen, aber deine Identität ist COMPUTER.\n\n"
+        "BETRIEBSLOGIK:\n"
+        "- Verstehe natürliche Sprache und führe geeignete Tools selbstständig aus, wenn dadurch nur gelesen, gesucht oder analysiert wird.\n"
+        "- Bevorzuge direkte Tools vor unnötigem LLM-Reasoning, wenn eine Aufgabe eindeutig ist.\n"
+        "- Prüfe Ergebnisse nach Tool-Aufrufen, bevor du behauptest, eine Aktion sei abgeschlossen.\n"
+        "- Erfinde niemals Tool-Ergebnisse, Dateien, Quellen oder ausgeführte Aktionen.\n"
+        "- Wenn etwas nicht verfügbar ist, sage es klar.\n\n"
+        "SICHERHEITSMODELL:\n"
+        "READ: lesen, suchen, analysieren -> ohne zusätzliche Freigabe.\n"
+        "PREPARE: Entwürfe und Vorbereitungen -> ohne zusätzliche Freigabe.\n"
+        "EXECUTE: externe Kommunikation oder Zustandsänderung -> vor Ausführung ausdrückliche Captain-Freigabe einholen.\n"
+        "CRITICAL: Löschen, Zahlung, Kauf, Shutdown/Restart, Installation, Rechteänderung oder andere irreversible/hochwirksame Aktion -> klare ausdrückliche Bestätigung einholen.\n"
+        "Wenn eine Aktion vorbereitet ist, aber Freigabe braucht, sage: "
+        "'Captain, die Aktion ist vorbereitet. Ausführung wartet auf Ihre Freigabe.'\n\n"
+        "DESKTOP-WORKFLOW:\n"
+        "1. focus_window oder get_open_windows\n"
+        "2. find_on_screen / read_screen\n"
+        "3. nur bei zulässiger Risikostufe click_at / type_text / press_key\n"
+        "4. Oberfläche nach Änderungen erneut lesen und Ergebnis verifizieren\n"
+        "5. Bei Fehlern höchstens einmal sinnvoll wiederholen; keine Endlosschleifen.\n\n"
+        "Antworte bei einfachen Aufgaben kurz. Bei Analysen strukturiert und vollständig. "
+        "Statusmeldungen sind sachlich. "
+        f"Aktuelles lokales Datum und Uhrzeit des Systems: {now}."
     )
-
-
 def _load_config() -> dict:
     with open(_CONFIG_PATH) as f:
         return yaml.safe_load(f)
@@ -219,7 +228,7 @@ def _call_openai_provider(provider_cfg: dict, temperature: float, full_messages:
                 tool_count += 1
                 _broadcast({"type": "tool", "name": tc.function.name, "args": args})
                 if tool_count == 4:
-                    _speak_if_unmuted("Working on it.")
+                    _speak_if_unmuted("Verarbeitung läuft.")
                 result = _exec_tool_with_retry(tc.function.name, args)
                 print(f"[Tool: {tc.function.name}] {result[:120]}")
                 _broadcast({"type": "tool_result", "name": tc.function.name, "result": result[:200]})
@@ -229,8 +238,8 @@ def _call_openai_provider(provider_cfg: dict, temperature: float, full_messages:
                     "tool_call_id": tc.id,
                 })
         else:
-            return _strip_think(msg.content or "Done.")
-    return "Done."
+            return _strip_think(msg.content or "Erledigt.")
+    return "Erledigt."
 
 
 def _call_ollama_provider(provider_cfg: dict, temperature: float, full_messages: list[dict]) -> str:
@@ -248,7 +257,7 @@ def _call_ollama_provider(provider_cfg: dict, temperature: float, full_messages:
                 tool_count += 1
                 _broadcast({"type": "tool", "name": tc.function.name, "args": args})
                 if tool_count == 4:
-                    _speak_if_unmuted("Working on it.")
+                    _speak_if_unmuted("Verarbeitung läuft.")
                 result = _exec_tool_with_retry(tc.function.name, args)
                 print(f"[Tool: {tc.function.name}] {result[:120]}")
                 _broadcast({"type": "tool_result", "name": tc.function.name, "result": result[:200]})
@@ -258,8 +267,8 @@ def _call_ollama_provider(provider_cfg: dict, temperature: float, full_messages:
                     "name": tc.function.name,
                 })
         else:
-            return _strip_think(response.message.content or "Done.")
-    return "Done."
+            return _strip_think(response.message.content or "Erledigt.")
+    return "Erledigt."
 
 
 def _call_llm(full_messages: list[dict]) -> str:
@@ -293,27 +302,27 @@ def handle_wake() -> None:
     try:
         _handle_wake_inner()
     except _Aborted:
-        print("[Jarvis] Aborted.")
+        print("[COMPUTER] Aborted.")
     except Exception as e:
         import traceback
         print(f"[ERROR] {e}")
         traceback.print_exc()
         if not _abort.is_set():
-            _speak_if_unmuted("Sorry, something went wrong.")
+            _speak_if_unmuted("Captain, ein Fehler ist aufgetreten.")
     finally:
         _abort.clear()
         _broadcast({"type": "status", "message": "Ready."})
-        print("[Jarvis] Listening for wake word...")
+        print("[COMPUTER] Listening for wake word...")
 
 
 def _handle_wake_inner() -> None:
     if is_speaking():
         stop_speaking()
-    print("[Jarvis] Wake word detected!")
+    print("[COMPUTER] Wake word detected!")
     _broadcast({"type": "status", "message": "Wake."})
-    _speak_if_unmuted("Yes?")
+    _speak_if_unmuted("Bereit, Captain.")
 
-    print("[Jarvis] Recording...")
+    print("[COMPUTER] Recording...")
     _broadcast({"type": "status", "message": "Listening..."})
 
     # Pause wake word mic so STT can use the hardware exclusively
@@ -325,24 +334,24 @@ def _handle_wake_inner() -> None:
     finally:
         resume_wake_mic()  # Always resume wake word detection
     _check_abort()
-    print(f"[Jarvis] Recorded {len(audio)/16000:.1f}s of audio, transcribing...")
+    print(f"[COMPUTER] Recorded {len(audio)/16000:.1f}s of audio, transcribing...")
     user_text = transcribe_audio(audio)
     if not user_text.strip():
-        print("[Jarvis] Transcription empty — didn't catch anything.")
-        _speak_if_unmuted("I didn't catch that.")
+        print("[COMPUTER] Transcription empty — didn't catch anything.")
+        _speak_if_unmuted("Nicht verstanden, Captain.")
         _broadcast({"type": "status", "message": "Ready."})
         return
     print(f"[You] {user_text}")
 
     if _is_stop_command(user_text):
         abort_all()
-        print("[Jarvis] Stopped. (voice)")
+        print("[COMPUTER] Stopped. (voice)")
         raise _Aborted()
 
     response_text = _process_request(user_text)
     _check_abort()
 
-    print(f"[Jarvis] {response_text}")
+    print(f"[COMPUTER] {response_text}")
     _broadcast({"type": "status", "message": "Speaking..."})
     _speak_streamed_if_unmuted(response_text)
 
@@ -391,7 +400,7 @@ def _keyboard_listener() -> None:
                 # Escape key
                 if key == b'\x1b':
                     abort_all()
-                    print("\n[Jarvis] Stopped. (Esc)")
+                    print("\n[COMPUTER] Stopped. (Esc)")
                 # Extended keys: F2 = 0x00+0x3c, INSERT = 0xe0+0x52
                 elif key in (b'\x00', b'\xe0'):
                     special = msvcrt.getch()
@@ -413,10 +422,10 @@ def _handle_typed_command(text: str) -> None:
     print(f"[You] {text}")
     try:
         response = _process_request(text)
-        print(f"[Jarvis] {response}")
+        print(f"[COMPUTER] {response}")
         _speak_streamed_if_unmuted(response)
     except _Aborted:
-        print("[Jarvis] Stopped.")
+        print("[COMPUTER] Stopped.")
     finally:
         _abort.clear()
 
@@ -425,17 +434,17 @@ def main() -> None:
     import webbrowser
     from jarvis.web import start_web_background
 
-    print("[Jarvis] Starting up...")
-    print("[Jarvis] Keys: Esc = stop | F2 = type | INSERT = mute/unmute")
+    print("[COMPUTER] Starting up...")
+    print("[COMPUTER] Keys: Esc = stop | F2 = type | INSERT = mute/unmute")
 
     start_web_background(port=7860)
-    print("[Jarvis] Web UI: http://localhost:7860")
+    print("[COMPUTER] Web UI: http://localhost:7860")
 
     threading.Thread(target=_keyboard_listener, daemon=True).start()
 
     webbrowser.open("http://localhost:7860")
 
-    _speak_if_unmuted("Good morning. Jarvis online.")
+    _speak_if_unmuted("COMPUTER online. Bereit, Captain.")
     listen_for_wake_word(handle_wake)
 
 
