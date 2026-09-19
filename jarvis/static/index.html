@@ -1424,6 +1424,11 @@ let newsGlobe = null;
 let newsResizeObserver = null;
 
 function setConsoleOpen(open) {
+  if (open) {
+    if (callOverlay.classList.contains('active')) setModeOverlay('call', false);
+    if (workshopOverlay.classList.contains('active')) setModeOverlay('workshop', false);
+    if (newsOverlay.classList.contains('active')) closeNewsMode();
+  }
   document.body.classList.toggle('console-open', open);
   consoleBtn.classList.toggle('active', open);
   consoleBtn.setAttribute('aria-expanded', String(open));
@@ -1509,6 +1514,13 @@ function setChatOpen(open, focusInput = false) {
 
 function setModeOverlay(name, open) {
   const target = name === 'call' ? callOverlay : workshopOverlay;
+  if (open) {
+    setConsoleOpen(false);
+    closeNewsMode();
+    const other = name === 'call' ? workshopOverlay : callOverlay;
+    other.classList.remove('active');
+    other.setAttribute('aria-hidden', 'true');
+  }
   target.classList.toggle('active', open);
   target.setAttribute('aria-hidden', String(!open));
   if (open && name === 'call') loadIntegrations();
@@ -1664,6 +1676,11 @@ function focusNewsGlobe(region) {
 }
 
 function openNewsMode(payload) {
+  setConsoleOpen(false);
+  callOverlay.classList.remove('active');
+  callOverlay.setAttribute('aria-hidden', 'true');
+  workshopOverlay.classList.remove('active');
+  workshopOverlay.setAttribute('aria-hidden', 'true');
   newsOverlay.classList.add('active');
   newsOverlay.setAttribute('aria-hidden', 'false');
   const region = payload.region || {};
