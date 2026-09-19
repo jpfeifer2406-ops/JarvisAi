@@ -27,6 +27,7 @@ from jarvis.tts import speak, speak_streamed, is_speaking, stop_speaking
 from jarvis.context import ContextManager
 from jarvis.memory import Memory
 from jarvis.tools.router import TOOL_SCHEMAS, dispatch
+from jarvis.news import build_news_payload, build_spoken_briefing
 
 _MAX_TOOL_LOOPS = 15
 _CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
@@ -97,6 +98,29 @@ def _direct_system_response(text: str) -> str | None:
         now = datetime.now()
         return f"Es ist {now:%H:%M} Uhr, Captain."
     return None
+
+
+def process_request(user_text: str) -> str:
+    """Route deterministic COMPUTER modes before falling back to the LLM agent."""
+    news_payload = build_news_payload(user_text)
+    if news_payload is not None:
+        response = build_spoken_briefing(news_payload)
+        _broadcast({"type": "user", "text": user_text})
+        _broadcast({"type": "news_mode", **news_payload})
+        _broadcast({"type": "response", "text": response})
+        context.add("user", user_text)
+        context.add("assistant", response)
+        return response
+
+    direct_response = _direct_system_response(user_text)
+    if direct_response is not None:
+        _broadcast({"type": "user", "text": user_text})
+        _broadcast({"type": "response", "text": direct_response})
+        context.add("user", user_text)
+        context.add("assistant", direct_response)
+        return direct_response
+
+    return _process_request(user_text)
 
 
 def _check_abort() -> None:
@@ -412,13 +436,7 @@ def _handle_wake_inner() -> None:
                 print("[COMPUTER] Stopped. (voice)")
                 raise _Aborted()
 
-            direct_response = _direct_system_response(user_text)
-            if direct_response is not None:
-                response_text = direct_response
-                _broadcast({"type": "user", "text": user_text})
-                _broadcast({"type": "response", "text": response_text})
-            else:
-                response_text = _process_request(user_text)
+            response_text = process_request(user_text)
             _check_abort()
 
             print(f"[COMPUTER] {response_text}")
@@ -498,7 +516,7 @@ def _handle_typed_command(text: str) -> None:
     _abort.clear()
     print(f"[You] {text}")
     try:
-        response = _process_request(text)
+        response = process_request(text)
         print(f"[COMPUTER] {response}")
         _speak_streamed_if_unmuted(response)
     except _Aborted:
