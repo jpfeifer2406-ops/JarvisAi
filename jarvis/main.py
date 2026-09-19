@@ -273,13 +273,11 @@ def _system_prompt() -> str:
         f"Aktuelles lokales Datum und Uhrzeit des Systems: {now}."
     )
 def _load_config() -> dict:
-    with open(_CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    return _runtime_load_config()
 
 
 def _save_config(cfg: dict) -> None:
-    with open(_CONFIG_PATH, "w") as f:
-        yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
+    save_effective_config(cfg)
 
 
 def get_providers() -> dict:
