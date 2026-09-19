@@ -14,6 +14,7 @@ from jarvis.tools.desktop import (
     click_at, scroll_screen, move_mouse, read_screen, find_on_screen,
 )
 from jarvis.tools.subagent import delegate_task
+from jarvis.workshop import create_document, read_document, revise_document, list_documents
 
 TOOL_MAP = {
     # Web
@@ -41,6 +42,11 @@ TOOL_MAP = {
     "read_file":        lambda a: read_file(a["path"]),
     "write_file":       lambda a: write_file(a["path"], a["content"]),
     "list_files":       lambda a: list_files(a["path"]),
+    # Creative workshop / documents
+    "create_document":  lambda a: create_document(a["title"], a["content"], a.get("format", "docx")),
+    "read_document":    lambda a: read_document(a["name"]),
+    "revise_document":  lambda a: revise_document(a["name"], a["find"], a["replacement"]),
+    "list_documents":   lambda _: list_documents(),
     # Code
     "run_python":       lambda a: run_python(a["code"]),
     # Clipboard
@@ -192,6 +198,36 @@ TOOL_SCHEMAS = [
         "description": "List files in directory (Documents or Desktop only).",
         "parameters": {"type": "object", "properties": {
             "path": {"type": "string"}}, "required": ["path"]}}},
+
+    # --- Creative workshop / documents ---
+    {"type": "function", "function": {
+        "name": "create_document",
+        "description": "Create a real draft document in the COMPUTER workspace. Supports DOCX, PDF and TXT. Never overwrites an existing file.",
+        "parameters": {"type": "object", "properties": {
+            "title": {"type": "string"},
+            "content": {"type": "string"},
+            "format": {"type": "string", "enum": ["docx", "pdf", "txt"]}},
+            "required": ["title", "content"]}}},
+
+    {"type": "function", "function": {
+        "name": "read_document",
+        "description": "Read text from a DOCX, PDF or TXT document in the COMPUTER workspace.",
+        "parameters": {"type": "object", "properties": {
+            "name": {"type": "string"}}, "required": ["name"]}}},
+
+    {"type": "function", "function": {
+        "name": "revise_document",
+        "description": "Create a revised copy of a workspace document by replacing text. Originals are preserved. PDF revisions rebuild the PDF from extracted text and may not preserve layout.",
+        "parameters": {"type": "object", "properties": {
+            "name": {"type": "string"},
+            "find": {"type": "string"},
+            "replacement": {"type": "string"}},
+            "required": ["name", "find", "replacement"]}}},
+
+    {"type": "function", "function": {
+        "name": "list_documents",
+        "description": "List documents in the COMPUTER creative workspace.",
+        "parameters": {"type": "object", "properties": {}}}},
 
     # --- Code ---
     {"type": "function", "function": {
