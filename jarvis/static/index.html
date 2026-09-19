@@ -690,6 +690,188 @@
   }
   .particles { opacity: .2; }
 
+
+  /* ─── COMPUTER News Globe ─── */
+  .news-overlay {
+    position: fixed;
+    inset: 66px 0 0 0;
+    z-index: 60;
+    display: none;
+    grid-template-columns: minmax(0, 1fr) 430px;
+    background:
+      radial-gradient(circle at 32% 48%, rgba(19, 83, 120, .18), transparent 34%),
+      linear-gradient(135deg, #01060b 0%, #03101b 52%, #02070d 100%);
+  }
+  .news-overlay.active { display: grid; }
+  .news-map {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    border-right: 1px solid rgba(105,220,255,.24);
+  }
+  #newsGlobe {
+    position: absolute;
+    inset: 0;
+  }
+  .news-map::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(105,220,255,.05) 1px, transparent 1px),
+      linear-gradient(rgba(105,220,255,.035) 1px, transparent 1px);
+    background-size: 54px 54px;
+    mask-image: radial-gradient(circle at center, transparent 10%, rgba(0,0,0,.75) 80%);
+  }
+  .news-hud {
+    position: absolute;
+    z-index: 4;
+    left: 22px;
+    top: 18px;
+    right: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+  }
+  .news-hud-title {
+    font-family: 'Orbitron', monospace;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+  .news-hud-sub {
+    margin-top: 5px;
+    color: var(--text-dim);
+    font: 11px 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+  }
+  .news-target {
+    border-left: 3px solid var(--gold);
+    background: rgba(3, 14, 24, .78);
+    padding: 10px 14px;
+    min-width: 190px;
+    text-align: right;
+  }
+  .news-target-label {
+    color: var(--gold);
+    font: 10px 'Orbitron', monospace;
+    letter-spacing: 2px;
+  }
+  .news-target-name {
+    margin-top: 4px;
+    color: var(--text);
+    font: 14px 'Orbitron', monospace;
+    letter-spacing: 1px;
+  }
+  .news-sidebar {
+    background: rgba(2, 9, 16, .96);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .news-sidebar-head {
+    padding: 18px 18px 14px;
+    border-bottom: 1px solid rgba(105,220,255,.18);
+  }
+  .news-sidebar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .news-sidebar-title {
+    font: 12px 'Orbitron', monospace;
+    letter-spacing: 2px;
+    color: var(--cyan);
+  }
+  .news-close {
+    appearance: none;
+    border: 1px solid rgba(105,220,255,.25);
+    background: rgba(105,220,255,.05);
+    color: var(--text-dim);
+    padding: 7px 10px;
+    cursor: pointer;
+    font: 9px 'Orbitron', monospace;
+    letter-spacing: 1px;
+  }
+  .news-close:hover { border-color: var(--cyan); color: var(--cyan); }
+  .news-region-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .news-region-btn {
+    border: 1px solid rgba(105,220,255,.18);
+    background: rgba(105,220,255,.035);
+    color: var(--text-dim);
+    padding: 6px 8px;
+    cursor: pointer;
+    font: 9px 'Orbitron', monospace;
+    letter-spacing: .7px;
+  }
+  .news-region-btn:hover, .news-region-btn.active {
+    color: var(--gold);
+    border-color: rgba(231,169,75,.55);
+    background: rgba(231,169,75,.06);
+  }
+  .news-feed {
+    overflow-y: auto;
+    padding: 12px 14px 24px;
+  }
+  .news-card {
+    padding: 13px 12px 12px;
+    margin-bottom: 9px;
+    border-left: 2px solid rgba(105,220,255,.45);
+    border-top: 1px solid rgba(105,220,255,.09);
+    background: linear-gradient(90deg, rgba(105,220,255,.055), rgba(105,220,255,.01));
+  }
+  .news-card-index {
+    color: var(--gold);
+    font: 9px 'Orbitron', monospace;
+    letter-spacing: 1px;
+  }
+  .news-card-title {
+    margin: 6px 0 5px;
+    color: var(--text);
+    font: 600 16px 'Rajdhani', sans-serif;
+    line-height: 1.15;
+  }
+  .news-card-summary {
+    color: #8ba6bd;
+    font: 12px/1.4 'JetBrains Mono', monospace;
+  }
+  .news-card-meta {
+    margin-top: 8px;
+    color: var(--text-muted);
+    font: 9px 'Orbitron', monospace;
+    letter-spacing: .5px;
+  }
+  .news-card a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .news-loading, .news-empty {
+    padding: 30px 12px;
+    text-align: center;
+    color: var(--text-muted);
+    font: 10px 'Orbitron', monospace;
+    letter-spacing: 1.5px;
+  }
+  .news-mode-note {
+    margin-top: 10px;
+    color: var(--text-muted);
+    font: 9px 'JetBrains Mono', monospace;
+  }
+  @media (max-width: 900px) {
+    .news-overlay { grid-template-columns: 1fr; grid-template-rows: 52vh 1fr; }
+    .news-map { border-right: 0; border-bottom: 1px solid rgba(105,220,255,.24); }
+    .news-sidebar { min-height: 0; }
+  }
+
 </style>
 </head>
 <body>
@@ -802,7 +984,8 @@
           <button class="quick-btn" data-cmd="Welche Programme sind geöffnet?">Programme</button>
           <button class="quick-btn" data-cmd="Gib mir den Systemstatus.">Systemstatus</button>
           <button class="quick-btn" data-cmd="Öffne Spotify.">Spotify</button>
-          <button class="quick-btn" data-cmd="Suche die wichtigsten aktuellen Technik-Nachrichten.">Tech-News</button>
+          <button class="quick-btn" data-cmd="Nachrichten für Deutschland.">Nachrichten</button>
+          <button class="quick-btn" data-cmd="Suche die wichtigsten aktuellen Technik-Themen im Web.">Tech-News</button>
           <button class="quick-btn" data-cmd="Lies meine Zwischenablage.">Zwischenablage</button>
         </div>
         <div class="section-label">Systemfunktionen</div>
@@ -877,6 +1060,43 @@
   </div>
 </div>
 
+
+<!-- COMPUTER News Globe Mode -->
+<div class="news-overlay" id="newsOverlay" aria-hidden="true">
+  <section class="news-map">
+    <div id="newsGlobe"></div>
+    <div class="news-hud">
+      <div>
+        <div class="news-hud-title">GLOBAL SITUATION // NEWS</div>
+        <div class="news-hud-sub">SATELLITE OVERVIEW · LIVE HEADLINES</div>
+      </div>
+      <div class="news-target">
+        <div class="news-target-label">FOKUS</div>
+        <div class="news-target-name" id="newsTargetName">WELT</div>
+      </div>
+    </div>
+  </section>
+  <aside class="news-sidebar">
+    <div class="news-sidebar-head">
+      <div class="news-sidebar-row">
+        <div class="news-sidebar-title">NACHRICHTENLAGE</div>
+        <button class="news-close" id="newsCloseBtn">ANSICHT SCHLIESSEN</button>
+      </div>
+      <div class="news-region-nav">
+        <button class="news-region-btn" data-news-region="world">WELT</button>
+        <button class="news-region-btn" data-news-region="germany">DEUTSCHLAND</button>
+        <button class="news-region-btn" data-news-region="nrw">NRW</button>
+        <button class="news-region-btn" data-news-region="europe">EUROPA</button>
+        <button class="news-region-btn" data-news-region="usa">USA</button>
+      </div>
+      <div class="news-mode-note">Kurzlage wird gesprochen. Vertiefung nur auf Befehl.</div>
+    </div>
+    <div class="news-feed" id="newsFeed">
+      <div class="news-empty">NACHRICHTENMODUS BEREIT</div>
+    </div>
+  </aside>
+</div>
+
 <!-- Provider Modal -->
 <div class="modal-overlay" id="providerModal">
   <div class="modal">
@@ -916,6 +1136,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/globe.gl@2.46.2"></script>
 <script>
 const msgEl = document.getElementById('messages');
 const inputEl = document.getElementById('input');
@@ -934,12 +1155,18 @@ const activityText = document.getElementById('activityText');
 const activitySteps = document.getElementById('activitySteps');
 const reactor = document.getElementById('reactor');
 const reactorLabel = document.getElementById('reactorLabel');
+const newsOverlay = document.getElementById('newsOverlay');
+const newsFeed = document.getElementById('newsFeed');
+const newsTargetName = document.getElementById('newsTargetName');
+const newsCloseBtn = document.getElementById('newsCloseBtn');
 
 let ws = null;
 let thinking = false;
 let isMuted = false;
 let toolStepCount = 0;
 let pendingWebText = null;
+let newsGlobe = null;
+let newsResizeObserver = null;
 
 document.querySelectorAll('.side-tab').forEach(tab => {
   tab.onclick = () => {
@@ -1000,6 +1227,161 @@ function addActivityStep() {
   const n = document.createElement('div'); n.className = 'activity-step active'; activitySteps.appendChild(n);
 }
 
+
+function initNewsGlobe() {
+  if (newsGlobe || typeof Globe === 'undefined') return;
+  const host = document.getElementById('newsGlobe');
+  const rect = host.getBoundingClientRect();
+
+  newsGlobe = new Globe(host)
+    .width(Math.max(320, rect.width))
+    .height(Math.max(320, rect.height))
+    .backgroundColor('#01060b')
+    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+    .showAtmosphere(true)
+    .atmosphereColor('#69dcff')
+    .atmosphereAltitude(0.12)
+    .ringsData([])
+    .ringColor(() => '#e7a94b')
+    .ringMaxRadius(4.2)
+    .ringPropagationSpeed(1.7)
+    .ringRepeatPeriod(900)
+    .labelsData([])
+    .labelText('label')
+    .labelColor(() => '#e7a94b')
+    .labelSize(1.15)
+    .labelDotRadius(0.35)
+    .labelAltitude(0.015);
+
+  const controls = newsGlobe.controls();
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.22;
+  controls.enableDamping = true;
+
+  newsResizeObserver = new ResizeObserver(entries => {
+    const box = entries[0].contentRect;
+    if (newsGlobe && box.width > 0 && box.height > 0) {
+      newsGlobe.width(box.width).height(box.height);
+    }
+  });
+  newsResizeObserver.observe(host);
+}
+
+function closeNewsMode() {
+  newsOverlay.classList.remove('active');
+  newsOverlay.setAttribute('aria-hidden', 'true');
+  if (newsGlobe) {
+    newsGlobe.controls().autoRotate = true;
+    newsGlobe.pointOfView({ lat: 18, lng: 10, altitude: 2.15 }, 900);
+  }
+}
+
+function setNewsRegionButton(key) {
+  document.querySelectorAll('.news-region-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.newsRegion === key);
+  });
+}
+
+function renderNewsItems(items) {
+  newsFeed.innerHTML = '';
+  if (!items || !items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'news-empty';
+    empty.textContent = 'KEINE AKTUELLEN MELDUNGEN GELADEN';
+    newsFeed.appendChild(empty);
+    return;
+  }
+
+  items.forEach((item, idx) => {
+    const card = document.createElement('article');
+    card.className = 'news-card';
+
+    const number = document.createElement('div');
+    number.className = 'news-card-index';
+    number.textContent = 'MELDUNG ' + String(idx + 1).padStart(2, '0');
+
+    const title = document.createElement(item.url ? 'a' : 'div');
+    title.className = 'news-card-title';
+    title.textContent = item.title || 'Ohne Titel';
+    if (item.url) {
+      title.href = item.url;
+      title.target = '_blank';
+      title.rel = 'noopener noreferrer';
+    }
+
+    const summary = document.createElement('div');
+    summary.className = 'news-card-summary';
+    summary.textContent = item.summary || '';
+
+    const meta = document.createElement('div');
+    meta.className = 'news-card-meta';
+    let dateLabel = item.date || '';
+    if (item.date) {
+      const parsed = new Date(item.date);
+      if (!Number.isNaN(parsed.getTime())) {
+        dateLabel = parsed.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+      }
+    }
+    meta.textContent = [item.source, dateLabel].filter(Boolean).join(' · ');
+
+    card.append(number, title);
+    if (item.summary) card.appendChild(summary);
+    card.appendChild(meta);
+    newsFeed.appendChild(card);
+  });
+}
+
+function focusNewsGlobe(region) {
+  if (!region) return;
+  initNewsGlobe();
+  if (!newsGlobe) return;
+
+  newsGlobe.controls().autoRotate = false;
+  const marker = [{ lat: region.lat, lng: region.lng, label: region.label }];
+  newsGlobe.ringsData(marker).labelsData(marker);
+  newsGlobe.pointOfView({
+    lat: region.lat,
+    lng: region.lng,
+    altitude: region.altitude || 0.7
+  }, 1800);
+}
+
+function openNewsMode(payload) {
+  newsOverlay.classList.add('active');
+  newsOverlay.setAttribute('aria-hidden', 'false');
+  const region = payload.region || {};
+  newsTargetName.textContent = region.label || 'WELT';
+  setNewsRegionButton(region.key || 'world');
+  renderNewsItems(payload.items || []);
+
+  requestAnimationFrame(() => {
+    initNewsGlobe();
+    focusNewsGlobe(region);
+  });
+}
+
+async function loadNewsRegion(key) {
+  newsFeed.innerHTML = '<div class="news-loading">AKTUALISIERE NACHRICHTENLAGE...</div>';
+  try {
+    const response = await fetch('/api/news?region=' + encodeURIComponent(key));
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const payload = await response.json();
+    openNewsMode(payload);
+  } catch (error) {
+    newsFeed.innerHTML = '<div class="news-empty">NACHRICHTEN NICHT VERFÜGBAR</div>';
+    console.error('news mode', error);
+  }
+}
+
+newsCloseBtn.addEventListener('click', closeNewsMode);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && newsOverlay.classList.contains('active')) closeNewsMode();
+});
+document.querySelectorAll('.news-region-btn').forEach(btn => {
+  btn.addEventListener('click', () => loadNewsRegion(btn.dataset.newsRegion));
+});
+
+
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/ws`);
@@ -1016,7 +1398,7 @@ function connect() {
         else if (msg.message === 'Speaking...') { setThinking(false); hideActivity(); setReactorState('speaking'); setStatusText('SPEAKING'); }
         else if (msg.message === 'Transcribing...') { setThinking(true); showActivity('TRANSCRIBING'); setReactorState('thinking'); setStatusText('TRANSCRIBING'); }
         else if (msg.message === 'Session active.') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('SESSION ACTIVE'); }
-        else if (msg.message === 'Standby.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('STANDBY'); }
+        else if (msg.message === 'Standby.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('STANDBY'); closeNewsMode(); }
         else if (msg.message === 'Wake.') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('ACTIVATED'); addMsg('system', 'COMPUTER ACTIVATED'); }
         else if (msg.message === 'Stopped.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('STANDBY'); addMsg('system', 'STOPPED'); }
         else if (msg.message === 'Ready.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('READY'); }
@@ -1034,6 +1416,7 @@ function connect() {
       case 'response': setThinking(false); hideActivity(); setReactorState('speaking'); setStatusText('SPEAKING'); addMsg('assistant', msg.text); addLiveFeed('assistant', msg.text); break;
       case 'mute': isMuted = msg.muted; updateMuteUI(); addMsg('system', msg.muted ? 'MUTED' : 'AUDIO ACTIVE'); break;
       case 'provider_changed': loadProviders(); break;
+      case 'news_mode': openNewsMode(msg); setStatusText('NEWS // ' + (msg.region?.label || 'WELT')); break;
     }
   };
 }
