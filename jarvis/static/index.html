@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>J.A.R.V.I.S.</title>
+<title>COMPUTER // Personal Command System</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -582,6 +582,114 @@
     .messages { padding: 10px 14px; }
     .input-bar { padding: 10px 14px; }
   }
+
+  /* ─── COMPUTER board-computer visual layer ───
+     Original cockpit design: dark naval surfaces, cyan active state,
+     amber attention state, red critical only. */
+  :root {
+    --bg: #03070d;
+    --surface: rgba(7, 17, 29, 0.94);
+    --surface2: rgba(10, 26, 42, 0.78);
+    --glass: rgba(72, 211, 255, 0.035);
+    --glass-border: rgba(78, 201, 235, 0.16);
+    --glass-border-hover: rgba(78, 201, 235, 0.38);
+    --cyan: #69dcff;
+    --cyan-dim: rgba(105, 220, 255, 0.13);
+    --cyan-glow: rgba(105, 220, 255, 0.34);
+    --blue: #4298d1;
+    --gold: #e7a94b;
+    --gold-dim: rgba(231, 169, 75, 0.14);
+    --red: #ef6464;
+    --red-dim: rgba(239, 100, 100, 0.14);
+    --green: #69dcff;
+    --green-dim: rgba(105, 220, 255, 0.18);
+    --purple: #a8c8ff;
+    --text: #e8f5fa;
+    --text-dim: #86a9ba;
+    --text-muted: #476472;
+    --radius: 4px;
+    --radius-sm: 3px;
+  }
+  body {
+    font-family: 'Rajdhani', system-ui, sans-serif;
+    background:
+      linear-gradient(180deg, rgba(4,13,23,.97), rgba(2,7,13,.99)),
+      var(--bg);
+  }
+  body::after { opacity: .25; }
+  .header {
+    min-height: 66px;
+    border-bottom: 1px solid rgba(105,220,255,.24);
+    box-shadow: 0 10px 32px rgba(0,0,0,.28);
+  }
+  .logo {
+    font-size: 18px;
+    letter-spacing: 7px;
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: var(--text);
+    color: var(--text);
+  }
+  .logo-version { color: var(--cyan); letter-spacing: 1.6px; }
+  .status-badge {
+    border-radius: 3px;
+    border-left: 4px solid var(--cyan);
+    background: rgba(105,220,255,.055);
+  }
+  .model-select, .hud-btn, .btn, .quick-btn, .setting-input, .setting-select, .settings-btn {
+    border-radius: 3px !important;
+  }
+  .reactor-hero { padding-top: 26px; }
+  .reactor { width: 132px; height: 132px; }
+  .reactor .r-outer { stroke-dasharray: 20 8 3 8; }
+  .reactor .r-mid { stroke-dasharray: 3 8 18 8; }
+  .reactor .r-core { filter: drop-shadow(0 0 10px var(--cyan)); }
+  .reactor-label {
+    bottom: -12px;
+    padding: 4px 9px;
+    border-left: 3px solid var(--cyan);
+    background: rgba(105,220,255,.05);
+    letter-spacing: 2px;
+  }
+  .side-panel {
+    width: 340px;
+    border-left: 1px solid rgba(105,220,255,.20);
+  }
+  .side-header {
+    border-bottom: 1px solid rgba(105,220,255,.18);
+    background: rgba(105,220,255,.035);
+  }
+  .side-title { color: var(--cyan); }
+  .side-tab.active {
+    color: var(--text);
+    border-bottom-color: var(--gold);
+    background: rgba(231,169,75,.045);
+  }
+  .msg.user {
+    background: rgba(105,220,255,.10);
+    border-color: rgba(105,220,255,.24);
+  }
+  .msg.assistant {
+    background: rgba(9,25,40,.86);
+    border-color: rgba(105,220,255,.13);
+  }
+  .msg.assistant::before { background: var(--cyan); }
+  .tool-log-entry { border-left-color: var(--gold); }
+  .input-bar {
+    border-top: 1px solid rgba(105,220,255,.18);
+    background: rgba(2,8,15,.95);
+  }
+  .btn-send {
+    background: rgba(105,220,255,.11);
+    color: var(--cyan);
+    border: 1px solid rgba(105,220,255,.38);
+    box-shadow: none;
+  }
+  .btn-stop {
+    background: rgba(239,100,100,.08);
+  }
+  .particles { opacity: .2; }
+
 </style>
 </head>
 <body>
@@ -604,8 +712,8 @@
         </svg>
       </div>
       <div>
-        <div class="logo">Jarvis</div>
-        <div class="logo-version">MK II</div>
+        <div class="logo">COMPUTER</div>
+        <div class="logo-version">PERSONAL COMMAND SYSTEM // v0.5.1 EXP</div>
       </div>
     </div>
     <div class="status-badge">
@@ -654,66 +762,66 @@
 
     <div class="input-bar">
       <div class="input-wrapper">
-        <input type="text" id="input" placeholder="Command Jarvis..." autocomplete="off" />
+        <input type="text" id="input" placeholder="Befehl an COMPUTER..." autocomplete="off" />
         <div class="input-wave">
           <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
           <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
         </div>
       </div>
-      <button class="btn btn-stop" id="stopBtn">ABORT</button>
-      <button class="btn btn-send" id="sendBtn">SEND</button>
+      <button class="btn btn-stop" id="stopBtn">STOP</button>
+      <button class="btn btn-send" id="sendBtn">SENDEN</button>
     </div>
   </div>
 
   <div class="side-panel">
     <div class="side-header">
-      <span class="side-title">HUD Panels</span>
+      <span class="side-title">SYSTEMKONSOLE</span>
     </div>
     <div class="side-tabs">
-      <button class="side-tab active" data-tab="tools">Tools</button>
+      <button class="side-tab active" data-tab="tools">Werkzeuge</button>
       <button class="side-tab" data-tab="live">Live</button>
-      <button class="side-tab" data-tab="actions">Actions</button>
-      <button class="side-tab" data-tab="settings">Config</button>
+      <button class="side-tab" data-tab="actions">Direkt</button>
+      <button class="side-tab" data-tab="settings">System</button>
     </div>
     <div class="side-content">
       <div class="tab-panel active" id="tab-tools">
         <div class="tool-log" id="toolLog"></div>
-        <div class="empty-hint" id="toolEmpty">AWAITING TOOL CALLS</div>
+        <div class="empty-hint" id="toolEmpty">WARTE AUF WERKZEUGAUFRUFE</div>
       </div>
       <div class="tab-panel" id="tab-live">
         <div class="live-feed" id="liveFeed"></div>
-        <div class="empty-hint" id="liveEmpty">LIVE FEED STANDBY</div>
+        <div class="empty-hint" id="liveEmpty">LIVE-EREIGNISSE // BEREIT</div>
       </div>
       <div class="tab-panel" id="tab-actions">
-        <div class="section-label">Quick Commands</div>
+        <div class="section-label">Direktbefehle</div>
         <div class="quick-actions">
-          <button class="quick-btn" data-cmd="What's the weather?">Weather</button>
-          <button class="quick-btn" data-cmd="What time is it?">Time</button>
-          <button class="quick-btn" data-cmd="Take a screenshot">Screenshot</button>
-          <button class="quick-btn" data-cmd="What apps are open?">Open Apps</button>
-          <button class="quick-btn" data-cmd="Get system info">System Info</button>
-          <button class="quick-btn" data-cmd="Open Spotify">Spotify</button>
-          <button class="quick-btn" data-cmd="Search the web for latest tech news">Tech News</button>
-          <button class="quick-btn" data-cmd="Read my clipboard">Clipboard</button>
+          <button class="quick-btn" data-cmd="Wie ist das Wetter?">Wetter</button>
+          <button class="quick-btn" data-cmd="Wie spät ist es?">Uhrzeit</button>
+          <button class="quick-btn" data-cmd="Erstelle einen Screenshot.">Screenshot</button>
+          <button class="quick-btn" data-cmd="Welche Programme sind geöffnet?">Programme</button>
+          <button class="quick-btn" data-cmd="Gib mir den Systemstatus.">Systemstatus</button>
+          <button class="quick-btn" data-cmd="Öffne Spotify.">Spotify</button>
+          <button class="quick-btn" data-cmd="Suche die wichtigsten aktuellen Technik-Nachrichten.">Tech-News</button>
+          <button class="quick-btn" data-cmd="Lies meine Zwischenablage.">Zwischenablage</button>
         </div>
-        <div class="section-label">Utilities</div>
+        <div class="section-label">Systemfunktionen</div>
         <div class="quick-actions">
-          <button class="quick-btn" data-cmd="Set volume to 50%">Volume 50%</button>
-          <button class="quick-btn" data-cmd="What's on my screen?">Screen Read</button>
-          <button class="quick-btn" data-cmd="Open file manager">Files</button>
-          <button class="quick-btn" data-cmd="Set a timer for 5 minutes">Timer 5m</button>
+          <button class="quick-btn" data-cmd="Setze die Lautstärke auf 50 Prozent.">Volume 50%</button>
+          <button class="quick-btn" data-cmd="Was ist auf meinem Bildschirm?">Screen Read</button>
+          <button class="quick-btn" data-cmd="Öffne den Datei-Explorer.">Dateien</button>
+          <button class="quick-btn" data-cmd="Stelle einen Timer auf 5 Minuten.">Timer 5m</button>
         </div>
       </div>
       <div class="tab-panel" id="tab-settings">
         <!-- Providers -->
         <div class="settings-group">
-          <div class="settings-group-title">LLM Providers</div>
+          <div class="settings-group-title">KI-Provider</div>
           <div id="providersList"></div>
-          <button class="settings-btn" onclick="openProviderModal()">+ Add Provider</button>
+          <button class="settings-btn" onclick="openProviderModal()">+ Provider hinzufügen</button>
         </div>
         <!-- LLM -->
         <div class="settings-group">
-          <div class="settings-group-title">LLM Settings</div>
+          <div class="settings-group-title">KI-Einstellungen</div>
           <div class="setting-row">
             <label class="setting-label">Temperature</label>
             <input class="setting-input" type="number" id="s-temperature" min="0" max="2" step="0.1" placeholder="0.7">
@@ -721,7 +829,7 @@
         </div>
         <!-- TTS -->
         <div class="settings-group">
-          <div class="settings-group-title">Text-to-Speech</div>
+          <div class="settings-group-title">Sprachausgabe // Kokoro</div>
           <div class="setting-row">
             <label class="setting-label">Voice</label>
             <input class="setting-input" type="text" id="s-tts-voice" placeholder="af_heart">
@@ -733,7 +841,7 @@
         </div>
         <!-- STT -->
         <div class="settings-group">
-          <div class="settings-group-title">Speech-to-Text</div>
+          <div class="settings-group-title">Spracherkennung</div>
           <div class="setting-row">
             <label class="setting-label">Model</label>
             <select class="setting-select" id="s-stt-model">
@@ -754,15 +862,15 @@
         </div>
         <!-- Wake Word -->
         <div class="settings-group">
-          <div class="settings-group-title">Wake Word</div>
+          <div class="settings-group-title">Aktivierungswort</div>
           <div class="setting-row">
             <label class="setting-label">Threshold</label>
             <input class="setting-input" type="number" id="s-wake-threshold" min="0.1" max="0.9" step="0.05" placeholder="0.5">
           </div>
         </div>
-        <!-- Save -->
-        <button class="settings-btn primary" onclick="saveSettings()">Save Settings</button>
-        <div class="settings-save-toast" id="saveToast">SETTINGS SAVED</div>
+        <!-- Speichern -->
+        <button class="settings-btn primary" onclick="saveSettings()">Einstellungen speichern</button>
+        <div class="settings-save-toast" id="saveToast">EINSTELLUNGEN GESPEICHERT</div>
       </div>
     </div>
   </div>
@@ -771,14 +879,14 @@
 <!-- Provider Modal -->
 <div class="modal-overlay" id="providerModal">
   <div class="modal">
-    <div class="modal-title" id="modalTitle">Add Provider</div>
+    <div class="modal-title" id="modalTitle">Provider hinzufügen</div>
     <input type="hidden" id="pm-editing-key" value="">
     <div class="setting-row">
       <label class="setting-label">Key (unique id)</label>
       <input class="setting-input" type="text" id="pm-key" placeholder="my_provider">
     </div>
     <div class="setting-row">
-      <label class="setting-label">Label (display name)</label>
+      <label class="setting-label">Bezeichnung</label>
       <input class="setting-input" type="text" id="pm-label" placeholder="My Cloud LLM">
     </div>
     <div class="setting-row">
@@ -793,16 +901,16 @@
       <input class="setting-input" type="text" id="pm-model" placeholder="gpt-4o / qwen3:8b / etc">
     </div>
     <div class="setting-row">
-      <label class="setting-label">Base URL</label>
+      <label class="setting-label">Basis-URL</label>
       <input class="setting-input" type="text" id="pm-url" placeholder="https://api.openai.com/v1">
     </div>
     <div class="setting-row">
-      <label class="setting-label">API Key (optional)</label>
+      <label class="setting-label">API-Key (optional)</label>
       <input class="setting-input" type="password" id="pm-apikey" placeholder="sk-...">
     </div>
     <div class="modal-btns">
-      <button class="settings-btn" onclick="closeProviderModal()">Cancel</button>
-      <button class="settings-btn primary" onclick="saveProvider()">Save</button>
+      <button class="settings-btn" onclick="closeProviderModal()">Abbrechen</button>
+      <button class="settings-btn primary" onclick="saveProvider()">Speichern</button>
     </div>
   </div>
 </div>
@@ -905,8 +1013,8 @@ function connect() {
         if (msg.message === 'Thinking...') { setThinking(true); showActivity('ANALYZING'); setReactorState('thinking'); setStatusText('PROCESSING'); }
         else if (msg.message === 'Listening...') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('LISTENING'); }
         else if (msg.message === 'Speaking...') { setThinking(false); hideActivity(); setReactorState('speaking'); setStatusText('SPEAKING'); }
-        else if (msg.message === 'Wake.') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('LISTENING'); addMsg('system', '🎤 LISTENING...'); }
-        else if (msg.message === 'Stopped.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('READY'); addMsg('system', '⏹ STOPPED'); }
+        else if (msg.message === 'Wake.') { setThinking(false); hideActivity(); setReactorState('listening'); setStatusText('LISTENING'); addMsg('system', 'LISTENING'); }
+        else if (msg.message === 'Stopped.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('READY'); addMsg('system', 'STOPPED'); }
         else if (msg.message === 'Ready.') { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('READY'); }
         else { setThinking(false); hideActivity(); setReactorState('online'); setStatusText('READY'); }
         break;
@@ -920,7 +1028,7 @@ function connect() {
       case 'tool': setStatusText('TOOL: ' + msg.name.toUpperCase()); showActivity('EXECUTING: ' + msg.name); addActivityStep(); addToolCall(msg.name, msg.args); addLiveFeed('tool', '[Tool: ' + msg.name + ']'); break;
       case 'tool_result': updateToolResult(msg.name, msg.result); break;
       case 'response': setThinking(false); hideActivity(); setReactorState('speaking'); setStatusText('SPEAKING'); addMsg('assistant', msg.text); addLiveFeed('assistant', msg.text); break;
-      case 'mute': isMuted = msg.muted; updateMuteUI(); addMsg('system', msg.muted ? '🔇 MUTED' : '🔊 UNMUTED'); break;
+      case 'mute': isMuted = msg.muted; updateMuteUI(); addMsg('system', msg.muted ? 'MUTED' : 'AUDIO ACTIVE'); break;
       case 'provider_changed': loadProviders(); break;
     }
   };
@@ -1087,7 +1195,7 @@ function openProviderModal(editKey) {
   const editHidden = document.getElementById('pm-editing-key');
   if (editKey && _providersData[editKey]) {
     const p = _providersData[editKey];
-    title.textContent = 'Edit Provider';
+    title.textContent = 'Provider bearbeiten';
     editHidden.value = editKey;
     keyInput.value = editKey;
     keyInput.disabled = true;
@@ -1097,7 +1205,7 @@ function openProviderModal(editKey) {
     document.getElementById('pm-url').value = p.base_url || '';
     document.getElementById('pm-apikey').value = '';
   } else {
-    title.textContent = 'Add Provider';
+    title.textContent = 'Provider hinzufügen';
     editHidden.value = '';
     keyInput.value = '';
     keyInput.disabled = false;
