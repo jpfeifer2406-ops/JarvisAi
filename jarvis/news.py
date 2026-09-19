@@ -111,7 +111,7 @@ def detect_news_region(text: str) -> NewsRegion | None:
     for key in ("nrw", "germany", "europe", "usa", "uk", "france", "world"):
         region = REGIONS[key]
         if any(
-            re.search(rf"(?<!\\w){re.escape(alias)}(?!\\w)", normalized)
+            re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", normalized)
             for alias in region.aliases
         ):
             return region
