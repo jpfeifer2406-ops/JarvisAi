@@ -166,6 +166,24 @@ async def api_update_settings(request: Request):
     return JSONResponse({"status": "ok"})
 
 
+# ─── News APIs ───
+
+@app.get("/api/news")
+async def api_news(region: str = "world"):
+    """Return a fresh, short regional news payload for the cockpit globe."""
+    from dataclasses import asdict
+    from jarvis.news import REGIONS, fetch_news
+
+    selected = REGIONS.get(region, REGIONS["world"])
+    items = await asyncio.get_event_loop().run_in_executor(
+        None, fetch_news, selected, 6,
+    )
+    return JSONResponse({
+        "region": asdict(selected),
+        "items": items,
+    })
+
+
 # ─── Mute APIs ───
 
 @app.get("/api/mute")
@@ -204,11 +222,11 @@ async def websocket_endpoint(ws: WebSocket):
                     await ws.send_text(json.dumps({"type": "response", "text": "Ruhemodus."}))
                     continue
 
-                from jarvis.main import _process_request, _Aborted
+                from jarvis.main import process_request, _Aborted
                 loop = asyncio.get_event_loop()
                 try:
                     response = await loop.run_in_executor(
-                        None, _process_request, user_text,
+                        None, process_request, user_text,
                     )
                     from jarvis.main import _speak_streamed_if_unmuted
                     threading.Thread(target=_speak_streamed_if_unmuted, args=(response,), daemon=True).start()
