@@ -28,7 +28,7 @@ from jarvis.context import ContextManager
 from jarvis.memory import Memory
 from jarvis.tools.router import TOOL_SCHEMAS, dispatch
 from jarvis.news import build_news_payload, build_spoken_briefing
-from jarvis.ui_commands import detect_ui_command
+from jarvis.ui_commands import detect_ui_command, detect_overlay_command
 
 _MAX_TOOL_LOOPS = 15
 _CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
@@ -147,6 +147,23 @@ def process_request(user_text: str) -> str:
         context.add("assistant", response)
         return response
 
+    overlay = detect_overlay_command(user_text)
+    if overlay is not None:
+        panel, open_state = overlay
+        labels = {
+            "settings": "Einstellungen",
+            "workshop": "Creative-Werkstatt",
+            "call": "Call-Overlay",
+        }
+        label = labels.get(panel, panel)
+        response = f"{label} {'geöffnet' if open_state else 'geschlossen'}, Captain."
+        _broadcast({"type": "user", "text": user_text})
+        _broadcast({"type": "ui_mode", "panel": panel, "open": open_state})
+        _broadcast({"type": "response", "text": response})
+        context.add("user", user_text)
+        context.add("assistant", response)
+        return response
+
     news_payload = build_news_payload(user_text)
     if news_payload is not None:
         _last_news_payload = news_payload
@@ -234,7 +251,10 @@ def _system_prompt() -> str:
         "- Prüfe Ergebnisse nach Tool-Aufrufen, bevor du behauptest, eine Aktion sei abgeschlossen.\n"
         "- Erfinde niemals Tool-Ergebnisse, Dateien, Quellen oder ausgeführte Aktionen.\n"
         "- Wenn etwas nicht verfügbar ist, sage es klar.\n"
-        "- Im Nachrichtenmodus zuerst nur eine kurze Lageübersicht geben; vertiefen erst auf ausdrücklichen Wunsch.\n\n"
+        "- Im Nachrichtenmodus zuerst nur eine kurze Lageübersicht geben; vertiefen erst auf ausdrücklichen Wunsch.\n"
+        "- Für Dokumente bevorzugst du create_document/read_document/revise_document/list_documents. "
+        "Entwürfe landen im COMPUTER Workspace; bestehende Originale werden nicht still überschrieben.\n"
+        "- Call-, Werkstatt- und Einstellungsansichten sind Cockpit-Modi; behaupte keine Telefon- oder Cloud-Verbindung, wenn sie nicht verbunden ist.\n\n"
         "SICHERHEITSMODELL:\n"
         "READ: lesen, suchen, analysieren -> ohne zusätzliche Freigabe.\n"
         "PREPARE: Entwürfe und Vorbereitungen -> ohne zusätzliche Freigabe.\n"
@@ -350,10 +370,21 @@ def _call_openai_provider(provider_cfg: dict, temperature: float, full_messages:
 def _call_ollama_provider(provider_cfg: dict, temperature: float, full_messages: list[dict]) -> str:
     """Call Ollama provider."""
     model = provider_cfg["model"]
+    options = {}
+    if provider_cfg.get("num_ctx"):
+        options["num_ctx"] = int(provider_cfg["num_ctx"])
+    if provider_cfg.get("num_predict"):
+        options["num_predict"] = int(provider_cfg["num_predict"])
     tool_count = 0
     for _ in range(_MAX_TOOL_LOOPS):
         _check_abort()
-        response = ollama.chat(model=model, messages=full_messages, tools=TOOL_SCHEMAS)
+        response = ollama.chat(
+            model=model,
+            messages=full_messages,
+            tools=TOOL_SCHEMAS,
+            options=options or None,
+            keep_alive="10m",
+        )
         if response.message.tool_calls:
             full_messages.append(response.message.model_dump())
             for tc in response.message.tool_calls:
