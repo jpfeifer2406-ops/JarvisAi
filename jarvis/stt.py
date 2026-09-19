@@ -74,46 +74,69 @@ def record_until_silence(
     sample_rate: int = 16000,
     silence_threshold: float = 0.012,
     max_seconds: int = 30,
+    speech_wait_seconds: int = 30,
 ) -> np.ndarray:
-    """Record microphone audio until silence is detected. Returns float32 array.
-    Waits for speech to start before counting silence.
-    Can be interrupted via the abort event (Esc key)."""
+    """Record one utterance and stop after trailing silence.
+
+    The microphone can stay open while waiting for the Captain without storing
+    minutes of silence. Before speech starts, only a short pre-roll buffer is
+    retained. If no speech starts within speech_wait_seconds, an empty array is
+    returned so the active conversation can fall back to standby.
+    """
+    import time
+    from collections import deque
     import sounddevice as sd
 
-    chunk = int(sample_rate * 0.3)  # 300ms chunks
-    recording = []
+    chunk = int(sample_rate * 0.3)  # 300 ms
+    pre_roll = deque(maxlen=3)      # ~900 ms before detected speech
+    recording: list[np.ndarray] = []
     silent_chunks = 0
-    silent_chunks_needed = 7  # ~2.1s of silence to stop
+    silent_chunks_needed = 7        # ~2.1 s trailing silence
     heard_speech = False
-    speech_threshold = 0.015  # louder than silence — confirms user is talking
+    speech_threshold = 0.015
+    wait_started = time.monotonic()
+    speech_started = None
 
     with sd.InputStream(samplerate=sample_rate, channels=1, dtype="float32") as stream:
         while True:
-            # Check abort every chunk (~300ms)
             if _abort_event and _abort_event.is_set():
                 print("[STT] Recording aborted.")
-                break
+                return np.array([], dtype=np.float32)
 
             data, _ = stream.read(chunk)
-            flat = data.flatten()
-            recording.append(flat)
+            flat = data.flatten().copy()
             rms = float(np.sqrt(np.mean(flat ** 2)))
 
-            if rms >= speech_threshold:
-                if not heard_speech:
+            if not heard_speech:
+                pre_roll.append(flat)
+                if rms >= speech_threshold:
+                    heard_speech = True
+                    speech_started = time.monotonic()
+                    recording.extend(pre_roll)
+                    pre_roll.clear()
+                    silent_chunks = 0
                     print(f"[STT] Speech detected (rms={rms:.4f})")
-                heard_speech = True
+                elif time.monotonic() - wait_started >= speech_wait_seconds:
+                    print(f"[STT] Inactivity timeout ({speech_wait_seconds}s).")
+                    return np.array([], dtype=np.float32)
+                continue
+
+            recording.append(flat)
+
+            if rms >= speech_threshold:
                 silent_chunks = 0
-            elif heard_speech and rms < silence_threshold:
+            elif rms < silence_threshold:
                 silent_chunks += 1
 
-            if heard_speech and silent_chunks >= silent_chunks_needed:
+            if silent_chunks >= silent_chunks_needed:
                 print("[STT] Silence detected, stopping recording.")
                 break
-            if len(recording) * chunk >= max_seconds * sample_rate:
-                print(f"[STT] Max recording time reached ({max_seconds}s)")
+
+            if speech_started and time.monotonic() - speech_started >= max_seconds:
+                print(f"[STT] Max utterance length reached ({max_seconds}s).")
                 break
 
     if not recording:
-        return np.zeros(chunk, dtype=np.float32)
+        return np.array([], dtype=np.float32)
     return np.concatenate(recording)
+
