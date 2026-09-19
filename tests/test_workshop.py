@@ -36,3 +36,15 @@ def test_path_escape_is_blocked(tmp_path, monkeypatch):
         pass
     else:
         raise AssertionError("workspace path escape must be rejected")
+
+
+def test_docx_and_pdf_are_real_readable_files(tmp_path, monkeypatch):
+    monkeypatch.setattr(workshop, "_WORKSPACE", tmp_path)
+
+    workshop.create_document("DOCX Test", "Hallo Captain.", "docx")
+    workshop.create_document("PDF Test", "Hallo Captain.", "pdf")
+
+    assert (tmp_path / "DOCX Test.docx").stat().st_size > 0
+    assert (tmp_path / "PDF Test.pdf").stat().st_size > 0
+    assert "Hallo Captain." in workshop.read_document("DOCX Test.docx")
+    assert "Hallo Captain." in workshop.read_document("PDF Test.pdf")
