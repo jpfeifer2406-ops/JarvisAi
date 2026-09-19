@@ -14,7 +14,7 @@ llm:
     ollama:
       type: ollama
       label: Ollama (Local)
-      model: qwen3:8b
+      model: qwen2.5:1.5b
       base_url: http://localhost:11434
 context:
   max_messages: 10
