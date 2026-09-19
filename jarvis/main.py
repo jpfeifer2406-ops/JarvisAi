@@ -1,4 +1,13 @@
 from __future__ import annotations
+import sys
+
+# When started with "python -m jarvis.main", Python executes this file as
+# "__main__". The web and wake modules import "jarvis.main" by its package
+# name. Alias both names to the same module object so there is only one global
+# abort event, one context, and one COMPUTER runtime.
+if __name__ == "__main__":
+    sys.modules.setdefault("jarvis.main", sys.modules[__name__])
+
 import json
 import re
 import time
