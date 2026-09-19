@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
 import threading
 import time
 import urllib.request
@@ -16,12 +17,25 @@ def _load_config():
     return _runtime_load_config()
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def _resolve_model_path(cfg: dict) -> Path:
-    """Resolve/download the configured custom openWakeWord model."""
+    """Resolve/download and verify the configured custom openWakeWord model."""
     configured = Path(str(cfg["model"]))
     path = configured if configured.is_absolute() else _PROJECT_ROOT / configured
+    expected_sha = str(cfg.get("model_sha256", "")).strip().lower()
+
     if path.exists():
-        return path
+        if not expected_sha or _sha256(path) == expected_sha:
+            return path
+        print("[Wake] Existing COMPUTER wake model failed checksum; downloading clean copy.")
+        path.unlink(missing_ok=True)
 
     url = str(cfg.get("model_url", "")).strip()
     if not url:
@@ -32,6 +46,12 @@ def _resolve_model_path(cfg: dict) -> Path:
     print(f"[Wake] Downloading COMPUTER wake-word model -> {path}")
     try:
         urllib.request.urlretrieve(url, tmp)
+        if expected_sha:
+            actual = _sha256(tmp)
+            if actual != expected_sha:
+                raise RuntimeError(
+                    f"Wake-word checksum mismatch: expected {expected_sha}, got {actual}"
+                )
         tmp.replace(path)
     finally:
         if tmp.exists():
@@ -61,6 +81,7 @@ def listen_for_wake_word(callback) -> None:
     model_path = _resolve_model_path(cfg)
     phrase = str(cfg.get("phrase", "Computer"))
     threshold = float(cfg.get("threshold", 0.72))
+    required_hits = max(1, int(cfg.get("required_hits", 1)))
     chunk_size = int(cfg.get("chunk_size", 1280))
 
     # Custom Computer v2 model from the Home Assistant wake-word collection.
@@ -78,6 +99,7 @@ def listen_for_wake_word(callback) -> None:
 
     _busy = threading.Lock()
     _ignore_until = [0.0]
+    hit_count = 0
 
     print(f"[COMPUTER] Listening for wake word: {phrase.upper()}...")
     try:
@@ -94,7 +116,10 @@ def listen_for_wake_word(callback) -> None:
                 continue
 
             try:
-                pcm = np.frombuffer(mic.read(chunk_size), dtype=np.int16)
+                pcm = np.frombuffer(
+                    mic.read(chunk_size, exception_on_overflow=False),
+                    dtype=np.int16,
+                )
             except Exception:
                 time.sleep(0.05)
                 continue
@@ -103,9 +128,15 @@ def listen_for_wake_word(callback) -> None:
             # Only one wake model is loaded, but its result key is derived from
             # the ONNX graph/filename. max() avoids coupling to that internal key.
             score = max((float(v) for v in predictions.values()), default=0.0)
-            if score < threshold:
+            if score >= threshold:
+                hit_count += 1
+            else:
+                hit_count = 0
+                continue
+            if hit_count < required_hits:
                 continue
 
+            hit_count = 0
             oww.reset()
             now = time.time()
             if now < _ignore_until[0]:
