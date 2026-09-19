@@ -39,6 +39,7 @@ set_abort_event(_abort)  # Let STT check abort during recording
 # Global mute — INSERT toggles this, skips TTS when set
 _muted = threading.Event()
 _last_news_payload: dict | None = None
+_permission_broker = PermissionBroker(ttl_seconds=120)
 
 # --- Message bus: push events to all connected web clients ---
 _event_listeners: list = []  # list of callables: fn(event_dict)
@@ -136,6 +137,25 @@ def _news_context_message() -> dict | None:
 def process_request(user_text: str) -> str:
     """Route deterministic COMPUTER modes before falling back to the LLM agent."""
     global _last_news_payload
+
+    decision, pending = _permission_broker.decide(user_text)
+    if decision == "cancel" and pending is not None:
+        response = f"Aktion abgebrochen: {pending.name}."
+        _broadcast({"type": "user", "text": user_text})
+        _broadcast({"type": "response", "text": response})
+        context.add("user", user_text)
+        context.add("assistant", response)
+        return response
+    if decision == "approve" and pending is not None:
+        _broadcast({"type": "user", "text": user_text})
+        _broadcast({"type": "tool", "name": pending.name, "args": pending.args})
+        result = dispatch(pending.name, pending.args)
+        _broadcast({"type": "tool_result", "name": pending.name, "result": result[:200]})
+        response = f"Ausgeführt: {result}"
+        _broadcast({"type": "response", "text": response})
+        context.add("user", user_text)
+        context.add("assistant", response)
+        return response
 
     ui_open = detect_ui_command(user_text)
     if ui_open is not None:
@@ -355,6 +375,8 @@ def _call_openai_provider(provider_cfg: dict, temperature: float, full_messages:
                 result = _exec_tool_with_retry(tc.function.name, args)
                 print(f"[Tool: {tc.function.name}] {result[:120]}")
                 _broadcast({"type": "tool_result", "name": tc.function.name, "result": result[:200]})
+                if result.startswith("APPROVAL_REQUIRED: "):
+                    return result.removeprefix("APPROVAL_REQUIRED: ")
                 full_messages.append({
                     "role": "tool",
                     "content": result,
@@ -395,6 +417,8 @@ def _call_ollama_provider(provider_cfg: dict, temperature: float, full_messages:
                 result = _exec_tool_with_retry(tc.function.name, args)
                 print(f"[Tool: {tc.function.name}] {result[:120]}")
                 _broadcast({"type": "tool_result", "name": tc.function.name, "result": result[:200]})
+                if result.startswith("APPROVAL_REQUIRED: "):
+                    return result.removeprefix("APPROVAL_REQUIRED: ")
                 full_messages.append({
                     "role": "tool",
                     "content": result,
@@ -422,7 +446,11 @@ def _call_llm(full_messages: list[dict]) -> str:
 
 
 def _exec_tool_with_retry(name: str, args: dict) -> str:
-    """Execute a tool, retry once on failure."""
+    """Execute safe tools immediately and stage state-changing tools for approval."""
+    if requires_approval(name):
+        pending = _permission_broker.stage(name, args)
+        return "APPROVAL_REQUIRED: " + approval_message(pending)
+
     result = dispatch(name, args)
     if result.startswith("Tool '") and "failed:" in result:
         time.sleep(0.5)
