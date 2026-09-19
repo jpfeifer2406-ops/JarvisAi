@@ -37,6 +37,7 @@ _abort = threading.Event()
 set_abort_event(_abort)  # Let STT check abort during recording
 # Global mute — INSERT toggles this, skips TTS when set
 _muted = threading.Event()
+_last_news_payload: dict | None = None
 
 # --- Message bus: push events to all connected web clients ---
 _event_listeners: list = []  # list of callables: fn(event_dict)
@@ -100,10 +101,43 @@ def _direct_system_response(text: str) -> str | None:
     return None
 
 
+def _looks_like_news_followup(text: str) -> bool:
+    cleaned = re.sub(r"[^a-zäöüß0-9 ]+", " ", text.lower())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    cues = (
+        "meldung", "nachricht", "schlagzeile", "punkt eins", "punkt zwei",
+        "punkt drei", "erste", "zweite", "dritte", "details", "näher ein",
+        "naeher ein", "mehr dazu",
+    )
+    return any(cue in cleaned for cue in cues)
+
+
+def _news_context_message() -> dict | None:
+    if not _last_news_payload:
+        return None
+    region = _last_news_payload.get("region", {}).get("label", "WELT")
+    items = _last_news_payload.get("items", [])
+    if not items:
+        return None
+    lines = [f"Aktuelle Nachrichtenlage {region} aus dem letzten COMPUTER-News-Modus:"]
+    for idx, item in enumerate(items[:6], start=1):
+        lines.append(
+            f"Meldung {idx}: {item.get('title', '')} | "
+            f"Quelle: {item.get('source', '')} | URL: {item.get('url', '')} | "
+            f"Kurztext: {item.get('summary', '')}"
+        )
+    lines.append(
+        "Bei einer Vertiefung aktuelle Quelle mit Tools prüfen und Fakten nicht aus dem Kurztext extrapolieren."
+    )
+    return {"role": "system", "content": "\n".join(lines)}
+
+
 def process_request(user_text: str) -> str:
     """Route deterministic COMPUTER modes before falling back to the LLM agent."""
+    global _last_news_payload
     news_payload = build_news_payload(user_text)
     if news_payload is not None:
+        _last_news_payload = news_payload
         response = build_spoken_briefing(news_payload)
         _broadcast({"type": "user", "text": user_text})
         _broadcast({"type": "news_mode", **news_payload})
@@ -187,7 +221,8 @@ def _system_prompt() -> str:
         "- Bevorzuge direkte Tools vor unnötigem LLM-Reasoning, wenn eine Aufgabe eindeutig ist.\n"
         "- Prüfe Ergebnisse nach Tool-Aufrufen, bevor du behauptest, eine Aktion sei abgeschlossen.\n"
         "- Erfinde niemals Tool-Ergebnisse, Dateien, Quellen oder ausgeführte Aktionen.\n"
-        "- Wenn etwas nicht verfügbar ist, sage es klar.\n\n"
+        "- Wenn etwas nicht verfügbar ist, sage es klar.\n"
+        "- Im Nachrichtenmodus zuerst nur eine kurze Lageübersicht geben; vertiefen erst auf ausdrücklichen Wunsch.\n\n"
         "SICHERHEITSMODELL:\n"
         "READ: lesen, suchen, analysieren -> ohne zusätzliche Freigabe.\n"
         "PREPARE: Entwürfe und Vorbereitungen -> ohne zusätzliche Freigabe.\n"
@@ -463,6 +498,10 @@ def _process_request(user_text: str) -> str:
     if facts:
         facts_block = "Relevant context from memory: " + "; ".join(facts)
         messages = [{"role": "system", "content": facts_block}] + messages
+    if _looks_like_news_followup(user_text):
+        news_context = _news_context_message()
+        if news_context:
+            messages = [news_context] + messages
     messages.append({"role": "user", "content": user_text})
 
     full_messages = [{"role": "system", "content": _system_prompt()}] + messages
