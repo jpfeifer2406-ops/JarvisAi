@@ -99,8 +99,8 @@ keine kritischen Aktionen; Freigaben erfolgen im authentifizierten Cockpit.
 **Stop trennt im Browser zusätzlich das Audio**, sodass kein gepufferter Ton weiterläuft.
 
 Qwen-Inferenz läuft in abbrechbaren Hilfsprozessen. Das ist keine Python-Sandbox.
-Pro Turn Modellladen ist bewusst ein langsamer erster Adapter; Warmhaltung/Streaming-
-Optimierung folgen erst nach Messungen. Energie-basierte Aufnahme/Barge-in ist ein
+Modelle und Referenzprompt bleiben zwischen normalen Turns im warmen Hilfsprozess;
+nach Stop während Inferenz wird neu geladen. Streaming-Optimierung folgt nach Messungen. Energie-basierte Aufnahme/Barge-in ist ein
 experimenteller Fallback, kein akustisch validiertes VAD-/Echo-Konzept. Headset empfohlen
 für den ersten Test; keine Latenz- oder Echofreiheitszusage.
 

@@ -15,6 +15,7 @@ from pathlib import Path
 
 class SpeechWorker:
     """One warm worker per audio owner. Stop destroys it; next turn recovers fresh."""
+
     def __init__(self):
         self.process = None
         self.lock = asyncio.Lock()
@@ -36,14 +37,25 @@ class SpeechWorker:
                     executable = os.environ.get("COMPUTER_VOICE_PYTHON", sys.executable)
                     environment = os.environ.copy()
                     threads = environment.get("COMPUTER_CPU_THREADS", "2")
-                    environment.update({"OMP_NUM_THREADS": threads, "MKL_NUM_THREADS": threads,
-                                        "TOKENIZERS_PARALLELISM": "false"})
+                    environment.update(
+                        {
+                            "OMP_NUM_THREADS": threads,
+                            "MKL_NUM_THREADS": threads,
+                            "TOKENIZERS_PARALLELISM": "false",
+                        }
+                    )
                     self.process = await asyncio.create_subprocess_exec(
-                        executable, "-m", "computer.adapters.speech_worker", "serve",
-                        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.DEVNULL, env=environment)
+                        executable,
+                        "-m",
+                        "computer.adapters.speech_worker",
+                        "serve",
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.DEVNULL,
+                        env=environment,
+                    )
                 request = {"mode": mode, "payload": payload, "output": str(output)}
-                self.process.stdin.write((json.dumps(request)+"\n").encode())
+                self.process.stdin.write((json.dumps(request) + "\n").encode())
                 await self.process.stdin.drain()
                 async with asyncio.timeout(180):
                     reply = await self.process.stdout.readline()

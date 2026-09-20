@@ -102,7 +102,10 @@ class Documents:
         return self.commit(title, text, kind, blob, parent)
 
     def commit(self, title, text, kind, blob, parent=None):
-        if len(blob) > 10_000_000 or len(self.list()) >= 200:
+        if (
+            len(blob) > 10_000_000
+            or sum(1 for p in self.root.iterdir() if re.fullmatch(r"[a-f0-9]{32}", p.name)) >= 200
+        ):
             raise ValueError("Dokumentlimit erreicht.")
         doc_id = uuid.uuid4().hex
         stage = self.root / (".draft-" + doc_id)

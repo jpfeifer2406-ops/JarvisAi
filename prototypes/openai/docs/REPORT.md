@@ -123,7 +123,7 @@ Sicheres Weglassen ist keine implementierte Funktionsparität dieser Geräteeffe
 
 ## 6. Tests und Grenzen
 
-Lokaler Prüflauf: **46 Tests bestanden**, Python 3.12.14, Linux-Umgebung.
+Lokaler Prüflauf: **48 Tests bestanden**, Python 3.12.14, Linux-Umgebung.
 Ruff sowie JS-Syntaxchecks gehören zum Abschlussprüflauf. Eine Pipecat-Abhängigkeit
 verwendet `audioop`; DeprecationWarning dokumentiert, Python deshalb aktuell <3.13.
 
@@ -139,6 +139,15 @@ Testdateien:
 
 Neue CI läuft getrennt auf Ubuntu und Windows, Python 3.12. CI ist keine Hardwarefreigabe.
 Keine bezahlten LLM-Aufrufe, Modellgewichte oder echten persönlichen Daten für Tests.
+
+Zusätzlich wurde die echte lokale Anwendung in Headless Chromium gestartet: Login,
+EXECUTE-Freigabe und DOCX-Erstellung im Browser erfolgreich; keine JavaScript-Laufzeitfehler.
+Mobile Ansicht bei 390 Pixel Breite ohne horizontalen Seitenüberlauf. Das ist ein Linux-
+Browser-Test, kein Windows-/Mikrofon-Test. Screenshots: `cockpit.png`, `workshop.png`,
+`cockpit-mobile.png` in diesem Verzeichnis.
+
+`test_speech_process.py` prüft einen echten warmen Hilfsprozess auf Wiederverwendung,
+Abbruch, Prozessende, Fehler-Cleanup und Wiederanlauf; dabei keine Modelle geladen.
 
 ## 7. Oberfläche / Produktbewertung
 
@@ -169,18 +178,21 @@ werden. Die Oberfläche ist nicht Beleg für die Qualität des Agentenframeworks
 
 **Pydantic AI:** noch nicht implementiert oder unter denselben Tests gemessen. Architektur-
 komplexität, Performance und Produktqualität dürfen daher nicht zahlenmäßig verglichen werden.
-Qwen ist ebenfalls eine separat austauschbare Komponente; Modellauswahl und Performance
-entscheiden wir nach Captains Hardwaredaten, nicht nach dem Agenten-SDK.
+Qwen ist ebenfalls eine separat austauschbare Komponente. Das CPU-Profil nutzt als Kandidaten
+Qwen3-TTS-0.6B-Base mit weiblicher Referenz; Performance entscheidet der Hardwaretest.
 
 ## 9. Offene Risiken / nicht fertig
 
 1. Noch keine Ziel-Windows-, Mikrofon-, Qwen-/STT-/Wake- oder LiveKit-Medienvalidierung.
-2. Hardwaredaten CPU/RAM/GPU/VRAM wurden beim Captain angefragt; keine gerätespezifische
-   Optimierung ohne diese Daten. Bisher CPU-default als konservativer Ausgangspunkt.
+2. Captain meldete Ryzen 5 PRO 3500U, Radeon Vega 8 und ca. 13 GB nutzbaren RAM.
+   start-ryzen.ps1 setzt zwei CPU-Threads, STT int8 und einen 0.6B-Base-Qwen-Kandidaten
+   mit weiblicher Referenz. Diese Anpassung ist noch nicht auf seinem Gerät gemessen.
 3. Energie-basierte Aufnahme/Barge-in kann Echo/Umgebungsgeräusche falsch behandeln;
    robustes VAD/Echo/Audio-Stresstesten ist noch offen.
-4. Qwen lädt pro Turn neu; erhebliche Latenz möglich. Keine Streaming-TTS-/Warmworker-
-   Optimierung und kein klanglicher Reproduktionsnachweis der Hörprobe.
+4. Der Speech-Worker hält Modelle und Referenzprompt zwischen normalen Turns warm;
+   Wiederverwendung, Cancel/Prozessende und Wiederanlauf sind mit echtem synthetischem
+   Hilfsprozess getestet. Echte Modellinferenz und Streaming-TTS bleiben offen; CPU-Latenz
+   kann erheblich sein. Kein klanglicher Reproduktionsnachweis der Hörprobe.
 5. RunState/Approval/Historie nur im RAM, kein Crash-Recovery oder dauerhafter Resume.
 6. Dokumente bleiben auf Platte, aber neue Session erhält keine automatische Zuordnung
    alter Entwürfe. Download empfohlen; Benutzerbibliothek/Retention/Recovery folgen.
@@ -209,6 +221,6 @@ entscheiden wir nach Captains Hardwaredaten, nicht nach dem Agenten-SDK.
 [CODE/TEST] Konkrete Implementierung und Tests in diesem Branch sind maßgeblich für die
 oben genannten lokalen Befunde. Hersteller-Latenzangaben wurden nicht übernommen.
 
-Nächster Freigabeschritt: Captain startet den Text-/Cockpitbetrieb und liefert Hardwaredaten.
+Nächster Freigabeschritt: Captain startet den Text-/Cockpitbetrieb auf dem gemeldeten Ryzen-Gerät.
 Danach Voice-/Provider-/Gerätetest mit gemessenen Latenzen, Recovery und Stimmvergleich.
 Kein Merge, keine Beta-Freigabe und kein endgültiger Framework-Sieger ohne Review.

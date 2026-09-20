@@ -15,21 +15,21 @@ Qwen3-TTS 0.6B Base mit weiblicher Referenz als kleinerer Kandidat.
 
 Kern, API, SDK-Adapter, Cockpit, Dokumente, Browser-Erweiterung, Drive-Read-only-Adapter,
 Voice-/LiveKit-Adapter und Windows-Starter geschrieben. Kein Jarvis-Laufzeitimport.
-Letzter abgeschlossener Testlauf: 46 Tests bestanden, vor der neuesten Warmworker-
-Optimierung. Echte SDK-HITL/Resume- und synthetische Pipecat-Frame-Tests eingeschlossen.
-Aktuelle Python-Syntax geparst. Die neue Warmworker-/Ryzen-Konfiguration noch nicht
-vollständig nachgetestet. Keine echten Provider-, OAuth-, Voice-/Hardwaretests.
+Letzter abgeschlossener Testlauf: 48 Tests bestanden, einschließlich Warmworker-
+Wiederverwendung, Cancel und Wiederanlauf mit synthetischem Hilfsprozess. Echte SDK-HITL/Resume- und synthetische Pipecat-Frame-Tests eingeschlossen.
+Aktuelle Python-Syntax geparst. Warmworker-Kontrollfluss nachgetestet; echte Modell-
+Performance des Ryzen-Profils noch nicht gemessen. Keine echten Provider-, OAuth-, Voice-/Hardwaretests.
 
 ## Nächste konkrete Schritte
 
-1. Warmworker-Cancellation, Prozess-Cleanup und Wiederanlauf testen; Profile/README/Report
-   mit der neuesten Änderung synchronisieren. Kein Pro-Turn-Neuladen mehr im Normalfall.
-2. Ruff, pytest und JS-Syntaxchecks erneut durchführen. UI über lokalen Testserver
-   starten, Freigabe/Dokumentworkflow im Browser prüfen; Screenshots fehlen noch.
+1. Warmworker-Kontrollfluss und UI bereits geprüft. Keine erneute Modellinstallation
+   ohne Bedarf; konkrete Restgrenzen im Report beachten.
+2. Letzte Checks und GitHub-CI abschließen. Browserprüfung erfolgreich, Screenshots
+   liegen unter docs/. Keine Hardwarevalidierung aus UI-Tests ableiten.
 3. GitHub-Experiment aktualisieren und neue CI lesen. Referenzbranch unverändert prüfen.
 4. Hardware-Setup/Modellpfade/Referenzdatei mit Captain testen; keine Echtzeitgarantie.
 5. Abschlussbericht mit ehrlichen Funktions-/Validierungsgrenzen, keine Siegerwahl.
 
 README.md und docs/REPORT.md enthalten Startanleitung und ausführliche Grenzen.
-Report kann bei Warmworker/Hardwareabschnitten noch den Voränderungsstand enthalten.
+Report wurde für Warmworker und gemeldete Hardware nachgeführt.
 Temporäre Browser-Testdownloads und Python-Umgebung gehören nicht in Git.
