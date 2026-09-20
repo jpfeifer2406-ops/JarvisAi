@@ -24,9 +24,13 @@ Performance des Ryzen-Profils noch nicht gemessen. Keine echten Provider-, OAuth
 
 1. Warmworker-Kontrollfluss und UI bereits geprüft. Keine erneute Modellinstallation
    ohne Bedarf; konkrete Restgrenzen im Report beachten.
-2. Letzte Checks und GitHub-CI abschließen. Browserprüfung erfolgreich, Screenshots
-   liegen unter docs/. Keine Hardwarevalidierung aus UI-Tests ableiten.
-3. GitHub-Experiment aktualisieren und neue CI lesen. Referenzbranch unverändert prüfen.
+2. Browserprüfung erfolgreich, Screenshots liegen unter docs/. Keine Hardwarevalidierung
+   aus UI-Tests ableiten. Windows-Timertest verwendet explizit abgelaufene Zeit statt
+   einer Annahme über die Auflösung der Systemuhr.
+3. Abgeschlossen: CI-Lauf 35533075693 für Commit
+   426517a81194f6258bf4f3a61762c757a6275d2c auf Ubuntu und Windows erfolgreich.
+   main und feature-v0.6.0 unverändert; alle 60 Referenzdateien identisch.
+   Nachfolgender Sicherungscommit ändert ausschließlich Dokumentation.
 4. Hardware-Setup/Modellpfade/Referenzdatei mit Captain testen; keine Echtzeitgarantie.
 5. Abschlussbericht mit ehrlichen Funktions-/Validierungsgrenzen, keine Siegerwahl.
 

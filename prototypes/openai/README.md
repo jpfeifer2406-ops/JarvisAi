@@ -113,7 +113,7 @@ python -m computer.adapters.drive authorize PFAD_ZUR_EIGENEN_DESKTOP_OAUTH_JSON
 
 Expliziter Browser-OAuth, Scope `drive.readonly`. Token ausschließlich im unterstützten
 OS-Credential-Store (Windows/macOS/SecretService), kein Klartext-Fallback. Anschließend
-im Cockpit Dateien lesen. Entfernen: `python -m computer.adapters.drive forget`.
+im Cockpit die Dateiliste abrufen. Das Lesen von Drive-Dateiinhalten ist noch nicht implementiert. Entfernen: `python -m computer.adapters.drive forget`.
 Kein Upload, Löschen oder sonstiger Drive-Schreibzugriff. Auth/Refresh noch nicht live geprüft.
 
 ## Sicherheit und Daten

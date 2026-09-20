@@ -82,7 +82,7 @@ er schreibt die Historie nicht rückwirkend um.
 | Dokumente | TXT/DOCX/PDF, Liste/Download/Revision als Kopie | Reale lange Dokumente gelesen, Endmarker und Originale geprüft |
 | News | Regionale feste RSS-Quellen, öffentliche HTTPS-Lesepolicy | Parsing implementiert; Quellenverfügbarkeit bleibt Netzwerkprüfung |
 | Browser Bridge | Expliziter Klick, aktiver HTTPS-Tab, scoped Token, TTL | API-Rechte/URL-Tests; Chrome-Extension noch nicht real gekoppelt |
-| Google Drive | Expliziter Read-only OAuth, OS-Keyring, Listenadapter | Keine echten Credentials; Auth/Refresh/Windows-Keyring offen |
+| Google Drive | Expliziter Read-only OAuth, OS-Keyring, Listenadapter | Nur Dateiliste, keine Dateiinhalte; echte Auth/Refresh/Windows-Keyring offen |
 | Settings | Session-Provider/Modell/Temperatur, feste sichere Endpunkte | Konfiguration und Key-Rotation mit Client-Mocks getestet |
 | Memory | Explizite enum-basierte Sitzungsvorlieben | Keine freie sensible Memory; Ablehnung freier Felder getestet |
 | Wake Word Computer | Gepinnter ONNX-Adapter, ein Eingangsstrom | Modellprovenienz aus Referenz, reale Erkennung offen |
@@ -114,7 +114,7 @@ er schreibt die Historie nicht rückwirkend um.
 | B26–B27: Settings/UI Injection | Strikte Requestmodelle, keine frei injizierbaren URLs/Keys/Policies, textContent statt HTML/onclick-Interpolation |
 | B29: Integrationstatus | Nicht autorisiert/nicht verbunden/abgelaufen ausdrücklich sichtbar |
 | B30–B32: Reproduzierbarkeit/Config | Direkte Kernversionen fixiert, lokale JS-Dateien; vollständiger Plattform-Lock und Config-Persistenz noch offen |
-| B33: Windowsadapter | Keine ungeprüften realen Power-/Desktopaktionen; Hardwareprofil fehlt noch |
+| B33: Windowsadapter | Keine ungeprüften realen Power-/Desktopaktionen; Ryzen-CPU-Profil vorhanden, Hardwaretest offen |
 | B34–B35: Lizenzen/Produktstatus | Eigene Notice-/Statusdokumentation, klare COMPUTER-Identität; kein kommerzielles Freigabeversprechen |
 
 Diese Tabelle behauptet keine vollständige Regression aller 35 alten Codepfade:
@@ -137,7 +137,12 @@ Testdateien:
 - `test_voice.py`: Cancel aller Audio-Phasen, Audio-Owner/Recovery/Ruhemodus, reale Pipecat-Frame-
   Verkettung mit simulierten Speech-Adaptern, signierte LiveKit-Tokenrechte.
 
-Neue CI läuft getrennt auf Ubuntu und Windows, Python 3.12. CI ist keine Hardwarefreigabe.
+GitHub-CI auf Ubuntu und Windows, Python 3.12: **beide erfolgreich**.
+Prüfstand: Commit `426517a81194f6258bf4f3a61762c757a6275d2c`,
+[Workflowlauf 35533075693](https://github.com/jpfeifer2406-ops/JarvisAi/actions/runs/35533075693).
+Der vorherige Windowslauf deckte einen Testfehler auf: zwei monotone Zeitabfragen
+können identisch sein. Der Ruhemodus-Test prüft nun ausdrücklich vor und nach Ablauf
+der Wartefrist. CI ist keine Hardwarefreigabe.
 Keine bezahlten LLM-Aufrufe, Modellgewichte oder echten persönlichen Daten für Tests.
 
 Zusätzlich wurde die echte lokale Anwendung in Headless Chromium gestartet: Login,
