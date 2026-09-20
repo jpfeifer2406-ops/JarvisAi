@@ -40,7 +40,8 @@ class Pending:
 
 
 class Broker:
-    def __init__(self, ttl=120):
+    def __init__(self, ttl=120, event=None):
+        self.event = event or (lambda *a, **kw: None)
         self.ttl = ttl
         self.pending: dict[str, Pending] = {}
         self.lock = asyncio.Lock()
@@ -48,6 +49,7 @@ class Broker:
 
     async def authorize(self, run: Run, tool: str, arguments: dict, risk: Risk) -> bool:
         await run.checkpoint()
+        self.event(run, "broker", "policy." + risk.value)
         if risk in (Risk.READ, Risk.PREPARE):
             return True
         encoded = json.dumps(arguments, sort_keys=True, ensure_ascii=False, allow_nan=False)
@@ -65,11 +67,14 @@ class Broker:
         async with self.lock:
             self.pending[action.id] = action
         run.status = "awaiting_approval"
+        self.event(run, "broker", "approval.pending")
         try:
             approved = await asyncio.wait_for(action.future, self.ttl)
             await run.checkpoint()
+            self.event(run, "broker", "approval.approved" if approved else "approval.denied")
             return approved
         except TimeoutError:
+            self.event(run, "broker", "approval.expired", "WARNING")
             return False
         finally:
             async with self.lock:

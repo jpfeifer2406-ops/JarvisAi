@@ -6,6 +6,7 @@ from typing import Literal, Callable, Awaitable
 from pydantic import Field, ValidationError
 from .contracts import StrictModel, Risk, Run, ToolResult
 from .network import fetch_public
+from .diagnostics import failure
 
 
 class Empty(StrictModel):
@@ -54,6 +55,7 @@ class Registry:
         self.broker, self.documents_for = broker, documents_for
         self.integrations, self.local_device = integrations, local_device
         self.entries: dict[str, Tool] = {}
+        self.event = lambda *a, **kw: None
         self.register(
             Tool("list_documents", "Liste eigener COMPUTER-Entwürfe.", Empty, Risk.READ, self.list_docs)
         )
@@ -152,9 +154,11 @@ class Registry:
         tool = self.entries.get(name)
         if not tool:
             return ToolResult(status="denied", message="Unbekanntes Tool; fail closed.")
+        self.event(run, "tool", tool.name + ".requested")
         try:
             args = tool.schema.model_validate(raw)
         except ValidationError:
+            self.event(run, "tool", tool.name + ".invalid_arguments", "WARNING")
             return ToolResult(status="error", message="Toolargumente entsprechen nicht dem Schema.")
         # Immutable serialized snapshot across the approval boundary.
         arguments = json.loads(args.model_dump_json())
@@ -163,6 +167,7 @@ class Registry:
         if not await self.broker.authorize(run, name, arguments, tool.risk):
             return ToolResult(status="denied", message="Aktion abgelehnt oder Freigabe abgelaufen.")
         await run.checkpoint()
+        self.event(run, "tool", tool.name + ".started")
         try:
             async with asyncio.timeout(30):
                 result = await tool.handler(run, tool.schema.model_validate(arguments))
@@ -173,13 +178,14 @@ class Registry:
             if len(result.model_dump_json()) > 300_000:
                 raise ValueError("Oversized tool result")
             run.results.append({"tool": name, "status": result.status})
+            self.event(run, "tool", tool.name + "." + result.status)
             return result
         except asyncio.CancelledError:
             raise
-        except Exception:
-            return ToolResult(
-                status="error", message="Tool fehlgeschlagen; keine erfolgreiche Ausführung bestätigt."
-            )
+        except Exception as exc:
+            self.event(run, "tool", tool.name + ".failed", "ERROR", exc)
+            detail = failure(exc)
+            return ToolResult(status="error", message=detail["message"], data={"code": detail["code"], "run_id": run.id})
 
     async def list_docs(self, run, args):
         return ToolResult(

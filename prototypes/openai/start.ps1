@@ -5,10 +5,10 @@ if (-not (Test-Path '.venv\Scripts\python.exe')) {
     if ($LASTEXITCODE -ne 0) { throw 'Python 3.12 und venv werden benötigt.' }
 }
 $projectHash = (Get-FileHash 'pyproject.toml' -Algorithm SHA256).Hash
-$stampPath = '.venv\computer-project.sha256'
+$stampPath = '.venv\computer-core.sha256'
 $installedHash = if (Test-Path $stampPath) { (Get-Content $stampPath -Raw).Trim() } else { '' }
 if ($installedHash -ne $projectHash) {
-    & .venv\Scripts\python.exe -m pip install -e '.[test,transport]'
+    & .venv\Scripts\python.exe -m pip install -e '.'
     if ($LASTEXITCODE -ne 0) { throw 'Installation fehlgeschlagen. Umgebung bleibt erhalten; nächster Start versucht erneut.' }
     Set-Content -Path $stampPath -Value $projectHash
 }

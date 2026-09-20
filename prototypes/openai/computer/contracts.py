@@ -28,7 +28,7 @@ class ToolResult(StrictModel):
 class Provider(StrictModel):
     kind: Literal["demo", "openai", "local"] = "demo"
     model: str = Field(default="", max_length=120, pattern=r"^[\w.:/\-]*$")
-    temperature: float = Field(default=0.3, ge=0, le=2)
+    temperature: float | None = Field(default=None, ge=0, le=2)
     # URLs and credentials are operator-owned, never supplied by tools/themes.
 
 
@@ -37,6 +37,7 @@ class Run:
     id: str
     session_id: str
     provider: Provider
+    api_key: str = field(default="", repr=False)
     status: str = "running"
     output: str = ""
     error: str | None = None

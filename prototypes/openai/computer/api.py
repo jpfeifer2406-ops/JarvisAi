@@ -9,6 +9,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi.exceptions import RequestValidationError
+from .diagnostics import failure
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import Field
@@ -21,6 +23,10 @@ ORIGIN = "http://127.0.0.1:7861"
 
 class Login(StrictModel):
     token: str = Field(max_length=128)
+
+
+class Credential(StrictModel):
+    key: str = Field(default="", max_length=512, repr=False)
 
 
 class Message(StrictModel):
@@ -64,6 +70,7 @@ def create_app(root: Path, pairing_token: str, runtime: Runtime | None = None):
                         await rt.close_session(sid)
 
         reaper = asyncio.create_task(reap())
+        rt.check_task = asyncio.create_task(rt.selfcheck())
         yield
         reaper.cancel()
         await asyncio.gather(reaper, return_exceptions=True)
@@ -92,7 +99,17 @@ def create_app(root: Path, pairing_token: str, runtime: Runtime | None = None):
                 if len(body) > 300_000:
                     return JSONResponse({"detail": "Anfrage zu groß"}, 413)
             req._body = bytes(body)
-        response = await next_handler(req)
+        try:
+            response = await next_handler(req)
+        except Exception as exc:
+            found = rt.sessions.get(req.cookies.get("computer_session", ""))
+            if found:
+                found.diagnostics.emit("http", "request.failed", level="ERROR", provider=found.provider, error=exc)
+            response = JSONResponse({"detail": failure(exc)["message"]}, 500)
+        if response.status_code >= 400:
+            found = rt.sessions.get(req.cookies.get("computer_session", ""))
+            if found:
+                found.diagnostics.emit("http", "status." + str(response.status_code), level="WARNING", provider=found.provider)
         response.headers.update(
             {
                 "Cache-Control": "no-store",
@@ -104,8 +121,16 @@ def create_app(root: Path, pairing_token: str, runtime: Runtime | None = None):
         )
         return response
 
+    @app.exception_handler(RequestValidationError)
+    async def validation(req, exc):
+        # FastAPI's default response echoes invalid input, including credential fields.
+        return JSONResponse({"detail": "Eingabeformat ungültig; Pflichtfelder und Werte prüfen."}, status_code=422)
+
     @app.exception_handler(ValueError)
     async def invalid(req, exc):
+        found = rt.sessions.get(req.cookies.get("computer_session", ""))
+        if found:
+            found.diagnostics.emit("http", "invalid_state", level="WARNING", provider=found.provider, error=exc)
         return JSONResponse({"detail": "Eingabe oder aktueller Zustand ungültig."}, status_code=400)
 
     @app.exception_handler(PermissionError)
@@ -163,8 +188,43 @@ def create_app(root: Path, pairing_token: str, runtime: Runtime | None = None):
         if rt.active(s):
             raise ValueError("Zuerst laufenden Auftrag beenden.")
         s.provider = body
+        s.checked_at = 0
+        s.provider_check = {"status": "DEGRADED", "message": "Konfiguration geändert; Verbindung prüfen."}
+        s.diagnostics.emit("provider", "configured", provider=body)
         s.history.clear()  # No automatic transfer of an old conversation to a new provider.
         return body
+
+    @app.post("/api/provider/key")
+    async def credential(body: Credential, s=Depends(session)):
+        if rt.active(s):
+            raise ValueError("Zuerst Auftrag beenden.")
+        s.api_key = body.key.strip()
+        s.checked_at = 0
+        s.provider_check = {"status": "DEGRADED", "message": "Key geändert; Verbindung prüfen."}
+        s.diagnostics.emit("provider", "credential.updated", provider=s.provider)
+        return {"configured": bool(s.api_key)}
+
+    @app.post("/api/provider/check")
+    async def provider_check(s=Depends(session)):
+        async with s.lock:
+            if rt.active(s):
+                raise ValueError("Zuerst Auftrag beenden.")
+            return await rt.check_provider(s)
+
+    @app.get("/api/diagnostics")
+    async def diagnostics(s=Depends(session)):
+        return {**s.diagnostics.export(), "checks": rt.checks, "provider_check": s.provider_check}
+
+    @app.post("/api/diagnostics/clear")
+    async def clear_diagnostics(s=Depends(session)):
+        s.diagnostics.events.clear()
+        return {"ok": True}
+
+    @app.post("/api/selfcheck")
+    async def selfcheck(s=Depends(session)):
+        if not rt.check_task or rt.check_task.done():
+            rt.check_task = asyncio.create_task(rt.selfcheck())
+        return {"status": "running"}
 
     @app.post("/api/memory")
     async def memory(body: Preferences, s=Depends(session)):
@@ -173,11 +233,18 @@ def create_app(root: Path, pairing_token: str, runtime: Runtime | None = None):
 
     @app.post("/api/voice/connect")
     async def voice_connect(s=Depends(session)):
-        if rt.voice is None:
-            from .adapters.livekit_voice import LiveKitVoice
-
-            rt.voice = LiveKitVoice(rt)
-        return await rt.voice.connect(s.id)
+        try:
+            s.diagnostics.emit("voice", "initializing", provider=s.provider)
+            if rt.voice is None:
+                from .adapters.livekit_voice import LiveKitVoice
+                rt.voice = LiveKitVoice(rt)
+            result = await rt.voice.connect(s.id)
+            s.voice_error = None
+            return result
+        except Exception as exc:
+            s.voice_error = failure(exc)["message"]
+            s.diagnostics.emit("voice", "initialization.failed", level="ERROR", provider=s.provider, error=exc)
+            return JSONResponse({"detail": s.voice_error, "diagnosis_id": s.diagnostics.id}, 503)
 
     @app.post("/api/voice/{action}")
     async def voice_control(action: Literal["stop", "disconnect", "wake"], s=Depends(session)):

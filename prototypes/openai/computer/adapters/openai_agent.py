@@ -136,7 +136,7 @@ class OpenAIAgent:
                 key = "local-no-secret"
             else:
                 url = "https://api.openai.com/v1"
-                key = os.environ.get("OPENAI_API_KEY")
+                key = run.api_key or os.environ.get("OPENAI_API_KEY")
                 if not key:
                     raise ValueError("OPENAI_API_KEY fehlt im lokalen Prozess.")
             import httpx2
@@ -159,6 +159,7 @@ class OpenAIAgent:
         )
         try:
             await run.checkpoint()
+            self.registry.event(run, "provider", "inference.started", "DEBUG")
             result = await Runner.run(
                 agent,
                 input=history + [{"role": "user", "content": text}],
