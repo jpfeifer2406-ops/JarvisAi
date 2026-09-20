@@ -66,7 +66,7 @@ async def test_audio_owner_recovery_sleep_followup():
     async def flush():
         pass
 
-    voice = VoiceSession("s", owner, stt, agent, tts, sink, flush, idle_seconds=0)
+    voice = VoiceSession("s", owner, stt, agent, tts, sink, flush, idle_seconds=120)
     with pytest.raises(ValueError):
         VoiceSession("other", owner, stt, agent, tts, sink, flush)
     voice.wake()
@@ -77,6 +77,11 @@ async def test_audio_owner_recovery_sleep_followup():
     await voice.submit(b"Hallo")
     await voice.task
     assert voice.state == AudioState.LISTENING
+    voice.tick()
+    assert voice.state == AudioState.LISTENING
+    # Model elapsed idle time explicitly: successive Windows clock readings
+    # may be equal, so a zero timeout does not reliably establish expiry.
+    voice.last_activity -= 121
     voice.tick()
     assert voice.state == AudioState.SLEEP
     voice.wake()
