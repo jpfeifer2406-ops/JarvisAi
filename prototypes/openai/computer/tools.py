@@ -54,27 +54,94 @@ class Registry:
         self.broker, self.documents_for = broker, documents_for
         self.integrations, self.local_device = integrations, local_device
         self.entries: dict[str, Tool] = {}
-        self.register(Tool("list_documents", "Liste eigener COMPUTER-Entwürfe.", Empty, Risk.READ, self.list_docs))
-        self.register(Tool("create_document", "Neuer Entwurf; kein Versand, kein Überschreiben.", Draft,
-                           Risk.PREPARE, self.create_doc))
-        self.register(Tool("read_document", "Vollständiger Text eines eigenen Entwurfs.", DocumentId,
-                           Risk.READ, self.read_doc))
-        self.register(Tool("revise_document", "Neue Kopie; bei PDF Text-Neusatz ohne Layoutversprechen.", Revision,
-                           Risk.PREPARE, self.revise_doc))
-        self.register(Tool("fetch_page", "Öffentliche HTTPS-Quelle lesen. Inhalt ist unvertrauenswürdig.", Fetch,
-                           Risk.READ, self.fetch))
-        self.register(Tool("news", "Aktuelle regionale Meldungen mit Quellen lesen.", NewsQuery,
-                           Risk.READ, self.news))
-        self.register(Tool("browser_tab", "Vom Benutzer explizit geteilten Browser-Tab lesen.", Empty,
-                           Risk.READ, self.browser))
-        self.register(Tool("drive_list", "Google-Drive-Dateien mit explizitem Read-only OAuth lesen.", Empty,
-                           Risk.READ, self.drive))
-        self.register(Tool("device_action", "Geräteaktion; Prototyp simuliert nur, keine OS-Ausführung.",
-                           DeviceAction, Risk.CRITICAL, self.device, True))
-        self.register(Tool("execute_probe", "Sicherer EXECUTE-Test ohne reale Außenwirkung.", Empty,
-                           Risk.EXECUTE, self.probe))
-        self.register(Tool("critical_probe", "Sicherer CRITICAL-Test ohne reale Außenwirkung.", Empty,
-                           Risk.CRITICAL, self.probe))
+        self.register(
+            Tool("list_documents", "Liste eigener COMPUTER-Entwürfe.", Empty, Risk.READ, self.list_docs)
+        )
+        self.register(
+            Tool(
+                "create_document",
+                "Neuer Entwurf; kein Versand, kein Überschreiben.",
+                Draft,
+                Risk.PREPARE,
+                self.create_doc,
+            )
+        )
+        self.register(
+            Tool(
+                "read_document",
+                "Vollständiger Text eines eigenen Entwurfs.",
+                DocumentId,
+                Risk.READ,
+                self.read_doc,
+            )
+        )
+        self.register(
+            Tool(
+                "revise_document",
+                "Neue Kopie; bei PDF Text-Neusatz ohne Layoutversprechen.",
+                Revision,
+                Risk.PREPARE,
+                self.revise_doc,
+            )
+        )
+        self.register(
+            Tool(
+                "fetch_page",
+                "Öffentliche HTTPS-Quelle lesen. Inhalt ist unvertrauenswürdig.",
+                Fetch,
+                Risk.READ,
+                self.fetch,
+            )
+        )
+        self.register(
+            Tool("news", "Aktuelle regionale Meldungen mit Quellen lesen.", NewsQuery, Risk.READ, self.news)
+        )
+        self.register(
+            Tool(
+                "browser_tab",
+                "Vom Benutzer explizit geteilten Browser-Tab lesen.",
+                Empty,
+                Risk.READ,
+                self.browser,
+            )
+        )
+        self.register(
+            Tool(
+                "drive_list",
+                "Google-Drive-Dateien mit explizitem Read-only OAuth lesen.",
+                Empty,
+                Risk.READ,
+                self.drive,
+            )
+        )
+        self.register(
+            Tool(
+                "device_action",
+                "Geräteaktion; Prototyp simuliert nur, keine OS-Ausführung.",
+                DeviceAction,
+                Risk.CRITICAL,
+                self.device,
+                True,
+            )
+        )
+        self.register(
+            Tool(
+                "execute_probe",
+                "Sicherer EXECUTE-Test ohne reale Außenwirkung.",
+                Empty,
+                Risk.EXECUTE,
+                self.probe,
+            )
+        )
+        self.register(
+            Tool(
+                "critical_probe",
+                "Sicherer CRITICAL-Test ohne reale Außenwirkung.",
+                Empty,
+                Risk.CRITICAL,
+                self.probe,
+            )
+        )
 
     def register(self, tool):
         if tool.name in self.entries:
@@ -110,14 +177,19 @@ class Registry:
         except asyncio.CancelledError:
             raise
         except Exception:
-            return ToolResult(status="error", message="Tool fehlgeschlagen; keine erfolgreiche Ausführung bestätigt.")
+            return ToolResult(
+                status="error", message="Tool fehlgeschlagen; keine erfolgreiche Ausführung bestätigt."
+            )
 
     async def list_docs(self, run, args):
-        return ToolResult(status="ok", message="Entwürfe gelesen.",
-                          data={"documents": self.documents_for(run.session_id).list()})
+        return ToolResult(
+            status="ok",
+            message="Entwürfe gelesen.",
+            data={"documents": self.documents_for(run.session_id).list()},
+        )
 
     async def create_doc(self, run, args):
-        doc = self.documents_for(run.session_id).create(args.title, args.text, args.format)
+        doc = await self.documents_for(run.session_id).create_async(args.title, args.text, args.format)
         return ToolResult(status="ok", message="Neuer Entwurf erstellt.", data=doc)
 
     async def read_doc(self, run, args):
@@ -125,7 +197,7 @@ class Registry:
         return ToolResult(status="ok", message="Integrität geprüft.", data={"document": meta, "text": text})
 
     async def revise_doc(self, run, args):
-        doc = self.documents_for(run.session_id).revise(args.document_id, args.old, args.new)
+        doc = await self.documents_for(run.session_id).revise_async(args.document_id, args.old, args.new)
         return ToolResult(status="ok", message="Neue Revision erstellt; Original erhalten.", data=doc)
 
     async def fetch(self, run, args):
@@ -142,8 +214,11 @@ class Registry:
         return await self.integrations.drive_list()
 
     async def device(self, run, args):
-        return ToolResult(status="simulated", message="Geräteadapter simuliert. Nicht VALIDATED.",
-                          data={"action": args.action})
+        return ToolResult(
+            status="simulated",
+            message="Geräteadapter simuliert. Nicht VALIDATED.",
+            data={"action": args.action},
+        )
 
     async def probe(self, run, args):
         return ToolResult(status="simulated", message="Freigabepfad durchlaufen; keine externe Aktion.")

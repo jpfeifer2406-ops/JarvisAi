@@ -2,6 +2,7 @@
 
 Free-form memory is intentionally absent until retention/encryption/DLP is designed.
 """
+
 from typing import Literal
 from .contracts import StrictModel
 

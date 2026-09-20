@@ -1,0 +1,11 @@
+{
+  "language": "German",
+  "gender": "female",
+  "wake_word": "Computer",
+  "wake_sha256": "5e8157e8a0b2bbf4708452ccf8d0dc3397b6e81fba4dad097a8ba9192894ab3a",
+  "idle_seconds": 120,
+  "max_utterance_seconds": 20,
+  "validated": false,
+  "description": "Speak in clear, natural German with a calm, composed, and matter-of-fact delivery. Use a smooth, slightly lower-pitched female voice with subtle warmth and quiet confidence. Keep the pacing measured but conversational, with precise articulation and short, natural pauses. Sound like an attentive, highly competent computer assistant aboard a research spacecraft. Use restrained intonation without sounding flat or robotic. Avoid panic, disbelief, dramatic emphasis, breathiness, and exaggerated cheerfulness.",
+  "reference_text": "Willkommen zurück, Captain. Hier ist Computer. Deine Dokumente sind vorbereitet. Soll ich dir eine Zusammenfassung vorlesen?"
+}

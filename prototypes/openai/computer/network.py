@@ -3,6 +3,7 @@
 No redirects, proxies, file URLs, credentials, custom ports, or private addresses.
 Provider/LiveKit operator configuration is separate from this untrusted URL path.
 """
+
 import ipaddress
 import socket
 from urllib.parse import urlsplit
@@ -12,8 +13,15 @@ from aiohttp.resolver import ThreadedResolver
 
 def public_url(url: str):
     p = urlsplit(url)
-    if (p.scheme != "https" or not p.hostname or p.username or p.password
-            or p.port not in (None, 443) or "\\" in url or len(url) > 2048):
+    if (
+        p.scheme != "https"
+        or not p.hostname
+        or p.username
+        or p.password
+        or p.port not in (None, 443)
+        or "\\" in url
+        or len(url) > 2048
+    ):
         raise ValueError("Nur öffentliche HTTPS-Adressen ohne Zugangsdaten sind erlaubt.")
     host = p.hostname.lower().rstrip(".")
     if host == "localhost" or host.endswith((".local", ".localhost", ".internal")):
@@ -38,8 +46,9 @@ class PublicResolver(ThreadedResolver):
 async def fetch_public(url: str, max_bytes=256_000):
     public_url(url)
     connector = aiohttp.TCPConnector(resolver=PublicResolver(), use_dns_cache=False)
-    async with aiohttp.ClientSession(connector=connector, trust_env=False,
-                                    timeout=aiohttp.ClientTimeout(total=15)) as client:
+    async with aiohttp.ClientSession(
+        connector=connector, trust_env=False, timeout=aiohttp.ClientTimeout(total=15)
+    ) as client:
         async with client.get(url, allow_redirects=False) as response:
             if response.status != 200:
                 raise ValueError("Quelle nicht direkt erreichbar; Redirects sind gesperrt.")

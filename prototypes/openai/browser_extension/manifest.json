@@ -1,0 +1,1 @@
+{"manifest_version":3,"name":"COMPUTER · Read-only Bridge A","version":"0.0.1","permissions":["activeTab","storage"],"host_permissions":["http://127.0.0.1:7861/*"],"action":{"default_popup":"popup.html"},"description":"Teilt nur auf Klick den aktiven HTTPS-Tab mit einer gekoppelten COMPUTER-Sitzung."}

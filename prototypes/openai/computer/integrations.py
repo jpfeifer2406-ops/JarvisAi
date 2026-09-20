@@ -1,4 +1,3 @@
-import asyncio
 import time
 from .contracts import ToolResult
 from .network import fetch_public, public_url
@@ -21,19 +20,32 @@ class Integrations:
 
     def browser_status(self, session_id):
         tab = self.tabs.get(session_id)
-        if not tab or time.monotonic()-tab["received"] > 120:
+        if not tab or time.monotonic() - tab["received"] > 120:
             return ToolResult(status="unavailable", message="Kein aktueller, explizit geteilter Browser-Tab.")
-        return ToolResult(status="ok", message="Geteilter Tab; keine Browsersteuerung.",
-                          data={k: v for k, v in tab.items() if k != "received"})
+        return ToolResult(
+            status="ok",
+            message="Geteilter Tab; keine Browsersteuerung.",
+            data={k: v for k, v in tab.items() if k != "received"},
+        )
 
     async def news(self, region):
         from defusedxml.ElementTree import fromstring
+
         xml = await fetch_public(FEEDS[region])
         root = fromstring(xml)
-        items = [{"title": node.findtext("title", ""), "url": node.findtext("link", ""),
-                  "date": node.findtext("pubDate", "")} for node in root.findall(".//item")[:8]]
-        return ToolResult(status="ok", message="Quellenmeldungen; keine erfundenen Ersatznachrichten.",
-                          data={"region": region, "items": items, "source": FEEDS[region]})
+        items = [
+            {
+                "title": node.findtext("title", ""),
+                "url": node.findtext("link", ""),
+                "date": node.findtext("pubDate", ""),
+            }
+            for node in root.findall(".//item")[:8]
+        ]
+        return ToolResult(
+            status="ok",
+            message="Quellenmeldungen; keine erfundenen Ersatznachrichten.",
+            data={"region": region, "items": items, "source": FEEDS[region]},
+        )
 
     async def drive_list(self):
         if not self.drive_reader:

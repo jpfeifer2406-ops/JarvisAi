@@ -1,0 +1,4 @@
+'use strict';
+const token=document.getElementById('token'),status=document.getElementById('status');
+chrome.storage.session.get('token').then(data=>{token.value=data.token||'';});
+document.getElementById('share').addEventListener('click',async()=>{try{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});if(!tab?.url?.startsWith('https://'))throw Error('Nur HTTPS-Tabs können geteilt werden.');await chrome.storage.session.set({token:token.value});const response=await fetch('http://127.0.0.1:7861/api/bridge/tab',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token.value},body:JSON.stringify({title:(tab.title||'').slice(0,300),url:tab.url})});if(!response.ok)throw Error('Kopplung abgelaufen oder Anfrage abgelehnt.');status.textContent='Tab geteilt. Keine weiteren Browserrechte.';}catch(error){status.textContent=error.message;}});

@@ -1,0 +1,13 @@
+{
+  "name": "Ryzen 5 PRO 3500U / Vega 8 / approximately 13 GB usable RAM",
+  "source": "Captain screenshots and stated usable RAM, 2026-09-20",
+  "validated": false,
+  "device": "cpu",
+  "cpu_threads": 2,
+  "stt_candidate": "faster-whisper base, CPU int8, beam 1; tiny if measured latency requires it",
+  "tts_candidate": "Qwen/Qwen3-TTS-12Hz-0.6B-Base with Captain-approved female reference",
+  "tts_precision": "float32",
+  "max_spoken_characters": 600,
+  "local_llm_candidate": "qwen2.5:1.5b (existing reference configuration, tool support not validated)",
+  "notes": "No CUDA assumption; no untested AMD GPU backend. One speech worker, cached models and reference embedding. No parallel audio sessions. Profile is an engineering starting point, not a measured performance guarantee."
+}
